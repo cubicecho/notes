@@ -10,6 +10,7 @@
   "dependencies": {
     "@apollo/server": "^5.5.1",
     "@as-integrations/express4": "^1.1.2",
+    "@casl/ability": "^7.0.0",
     "@cubicecho/notes-db": "*",
     "@graphql-tools/delegate": "^12.0.16",
     "@vantreeseba/drizzle-graphql": "^1.0.3",
