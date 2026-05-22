@@ -1,0 +1,508 @@
+input InsertIntoUserInput {
+  id: String
+  email: String!
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar DateTime
+
+input UpdateUserInput {
+  id: String
+  email: String
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+input UserFilters {
+  id: IdFilter
+  email: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+  OR: [UserFiltersOr!]
+}
+
+input IdFilter {
+  eq: String
+  ne: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+
+  """Array<undefined>"""
+  inArray: [String!]
+
+  """Array<undefined>"""
+  notInArray: [String!]
+  isNull: Boolean
+  isNotNull: Boolean
+  OR: [IdFilterOr!]
+}
+
+input IdFilterOr {
+  eq: String
+  ne: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+
+  """Array<undefined>"""
+  inArray: [String!]
+
+  """Array<undefined>"""
+  notInArray: [String!]
+  isNull: Boolean
+  isNotNull: Boolean
+}
+
+input StringFilter {
+  eq: String
+  ne: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<undefined>"""
+  inArray: [String!]
+
+  """Array<undefined>"""
+  notInArray: [String!]
+  isNull: Boolean
+  isNotNull: Boolean
+  OR: [StringFilterOr!]
+}
+
+input StringFilterOr {
+  eq: String
+  ne: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<undefined>"""
+  inArray: [String!]
+
+  """Array<undefined>"""
+  notInArray: [String!]
+  isNull: Boolean
+  isNotNull: Boolean
+}
+
+input DateTimeFilter {
+  """DateTime"""
+  eq: DateTime
+
+  """DateTime"""
+  ne: DateTime
+
+  """DateTime"""
+  lt: DateTime
+
+  """DateTime"""
+  lte: DateTime
+
+  """DateTime"""
+  gt: DateTime
+
+  """DateTime"""
+  gte: DateTime
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<DateTime>"""
+  inArray: [DateTime!]
+
+  """Array<DateTime>"""
+  notInArray: [DateTime!]
+  isNull: Boolean
+  isNotNull: Boolean
+  OR: [DateTimeFilterOr!]
+}
+
+input DateTimeFilterOr {
+  """DateTime"""
+  eq: DateTime
+
+  """DateTime"""
+  ne: DateTime
+
+  """DateTime"""
+  lt: DateTime
+
+  """DateTime"""
+  lte: DateTime
+
+  """DateTime"""
+  gt: DateTime
+
+  """DateTime"""
+  gte: DateTime
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<DateTime>"""
+  inArray: [DateTime!]
+
+  """Array<DateTime>"""
+  notInArray: [DateTime!]
+  isNull: Boolean
+  isNotNull: Boolean
+}
+
+input UserFiltersOr {
+  id: IdFilter
+  email: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input UserOrderBy {
+  id: InnerOrder
+  email: InnerOrder
+  createdAt: InnerOrder
+  updatedAt: InnerOrder
+}
+
+input InnerOrder {
+  direction: OrderDirection!
+
+  """Priority of current field"""
+  priority: Int!
+}
+
+"""Order by direction"""
+enum OrderDirection {
+  """Ascending order"""
+  asc
+
+  """Descending order"""
+  desc
+}
+
+input InsertIntoNoteInput {
+  id: String
+  userId: String!
+  orgId: String
+  title: String
+  content: String
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+input UpdateNoteInput {
+  id: String
+  userId: String
+  orgId: String
+  title: String
+  content: String
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+input NoteFilters {
+  id: IdFilter
+  userId: IdFilter
+  orgId: IdFilter
+  title: StringFilter
+  content: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+  OR: [NoteFiltersOr!]
+}
+
+input NoteFiltersOr {
+  id: IdFilter
+  userId: IdFilter
+  orgId: IdFilter
+  title: StringFilter
+  content: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input NoteOrderBy {
+  id: InnerOrder
+  userId: InnerOrder
+  orgId: InnerOrder
+  title: InnerOrder
+  content: InnerOrder
+  createdAt: InnerOrder
+  updatedAt: InnerOrder
+}
+
+input InsertIntoOrgInput {
+  id: String
+  name: String!
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+input UpdateOrgInput {
+  id: String
+  name: String
+
+  """DateTime"""
+  createdAt: DateTime
+
+  """DateTime"""
+  updatedAt: DateTime
+}
+
+input OrgFilters {
+  id: IdFilter
+  name: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+  OR: [OrgFiltersOr!]
+}
+
+input OrgFiltersOr {
+  id: IdFilter
+  name: StringFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+}
+
+input OrgOrderBy {
+  id: InnerOrder
+  name: InnerOrder
+  createdAt: InnerOrder
+  updatedAt: InnerOrder
+}
+
+input InsertIntoOrgMemberInput {
+  orgId: String!
+  userId: String!
+  role: OrgMembersRoleEnum
+
+  """DateTime"""
+  createdAt: DateTime
+}
+
+enum OrgMembersRoleEnum {
+  """Value: owner"""
+  owner
+
+  """Value: member"""
+  member
+}
+
+input UpdateOrgMemberInput {
+  orgId: String
+  userId: String
+  role: OrgMembersRoleEnum
+
+  """DateTime"""
+  createdAt: DateTime
+}
+
+input OrgMemberFilters {
+  orgId: IdFilter
+  userId: IdFilter
+  role: OrgMembersRoleEnumFilter
+  createdAt: DateTimeFilter
+  OR: [OrgMemberFiltersOr!]
+}
+
+input OrgMembersRoleEnumFilter {
+  eq: OrgMembersRoleEnum
+  ne: OrgMembersRoleEnum
+  lt: OrgMembersRoleEnum
+  lte: OrgMembersRoleEnum
+  gt: OrgMembersRoleEnum
+  gte: OrgMembersRoleEnum
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<undefined>"""
+  inArray: [OrgMembersRoleEnum!]
+
+  """Array<undefined>"""
+  notInArray: [OrgMembersRoleEnum!]
+  isNull: Boolean
+  isNotNull: Boolean
+  OR: [OrgMembersRoleEnumFilterOr!]
+}
+
+input OrgMembersRoleEnumFilterOr {
+  eq: OrgMembersRoleEnum
+  ne: OrgMembersRoleEnum
+  lt: OrgMembersRoleEnum
+  lte: OrgMembersRoleEnum
+  gt: OrgMembersRoleEnum
+  gte: OrgMembersRoleEnum
+  like: String
+  notLike: String
+  ilike: String
+  notIlike: String
+
+  """Array<undefined>"""
+  inArray: [OrgMembersRoleEnum!]
+
+  """Array<undefined>"""
+  notInArray: [OrgMembersRoleEnum!]
+  isNull: Boolean
+  isNotNull: Boolean
+}
+
+input OrgMemberFiltersOr {
+  orgId: IdFilter
+  userId: IdFilter
+  role: OrgMembersRoleEnumFilter
+  createdAt: DateTimeFilter
+}
+
+input OrgMemberOrderBy {
+  orgId: InnerOrder
+  userId: InnerOrder
+  role: InnerOrder
+  createdAt: InnerOrder
+}
+
+type User {
+  id: String!
+  email: String!
+
+  """DateTime"""
+  createdAt: DateTime!
+
+  """DateTime"""
+  updatedAt: DateTime!
+  notes(where: NoteFilters, orderBy: NoteOrderBy, offset: Int, limit: Int): [Note!]!
+  orgMemberships(where: OrgMemberFilters, orderBy: OrgMemberOrderBy, offset: Int, limit: Int): [OrgMember!]!
+}
+
+type Note {
+  id: String!
+  userId: String!
+  orgId: String
+  title: String!
+  content: String!
+
+  """DateTime"""
+  createdAt: DateTime!
+
+  """DateTime"""
+  updatedAt: DateTime!
+  user(where: UserFilters): User
+  org(where: OrgFilters): Org
+}
+
+type Org {
+  id: String!
+  name: String!
+
+  """DateTime"""
+  createdAt: DateTime!
+
+  """DateTime"""
+  updatedAt: DateTime!
+  notes(where: NoteFilters, orderBy: NoteOrderBy, offset: Int, limit: Int): [Note!]!
+  members(where: OrgMemberFilters, orderBy: OrgMemberOrderBy, offset: Int, limit: Int): [OrgMember!]!
+}
+
+type OrgMember {
+  orgId: String!
+  userId: String!
+  role: OrgMembersRoleEnum!
+
+  """DateTime"""
+  createdAt: DateTime!
+  org(where: OrgFilters): Org
+  user(where: UserFilters): User
+}
+
+type Query {
+  user(offset: Int, limit: Int, orderBy: UserOrderBy, where: UserFilters): [User!]!
+  userSingle(offset: Int, orderBy: UserOrderBy, where: UserFilters): User
+  note(offset: Int, limit: Int, orderBy: NoteOrderBy, where: NoteFilters): [Note!]!
+  noteSingle(offset: Int, orderBy: NoteOrderBy, where: NoteFilters): Note
+  org(offset: Int, limit: Int, orderBy: OrgOrderBy, where: OrgFilters): [Org!]!
+  orgSingle(offset: Int, orderBy: OrgOrderBy, where: OrgFilters): Org
+  orgMember(offset: Int, limit: Int, orderBy: OrgMemberOrderBy, where: OrgMemberFilters): [OrgMember!]!
+  orgMemberSingle(offset: Int, orderBy: OrgMemberOrderBy, where: OrgMemberFilters): OrgMember
+
+  """Notes owned by the authenticated user, plus notes in all their orgs."""
+  myNotes: [Note!]!
+
+  """Orgs the authenticated user is a member of."""
+  myOrgs: [Org!]!
+}
+
+type Mutation {
+  insertIntoUsers(values: [InsertIntoUserInput!]!): [User!]!
+  insertIntoUser(values: InsertIntoUserInput!): User
+  updateUsers(set: UpdateUserInput!, where: UserFilters): [User!]!
+  deleteFromUsers(where: UserFilters): [User!]!
+  insertIntoNotes(values: [InsertIntoNoteInput!]!): [Note!]!
+  insertIntoNote(values: InsertIntoNoteInput!): Note
+  updateNotes(set: UpdateNoteInput!, where: NoteFilters): [Note!]!
+  deleteFromNotes(where: NoteFilters): [Note!]!
+  insertIntoOrgs(values: [InsertIntoOrgInput!]!): [Org!]!
+  insertIntoOrg(values: InsertIntoOrgInput!): Org
+  updateOrgs(set: UpdateOrgInput!, where: OrgFilters): [Org!]!
+  deleteFromOrgs(where: OrgFilters): [Org!]!
+  insertIntoOrgMembers(values: [InsertIntoOrgMemberInput!]!): [OrgMember!]!
+  insertIntoOrgMember(values: InsertIntoOrgMemberInput!): OrgMember
+  updateOrgMembers(set: UpdateOrgMemberInput!, where: OrgMemberFilters): [OrgMember!]!
+  deleteFromOrgMembers(where: OrgMemberFilters): [OrgMember!]!
+
+  """Create a new org and add the caller as owner."""
+  createOrg(name: String!): Org!
+
+  """
+  Add a user to an org. Caller must be an owner of the org.
+  Defaults to role 'member' if not specified.
+  """
+  addOrgMember(orgId: String!, userId: String!, role: OrgMembersRoleEnum): OrgMember!
+
+  """Remove a user from an org. Caller must be an owner of the org."""
+  removeOrgMember(orgId: String!, userId: String!): OrgMember!
+
+  """
+  Create a note. If orgId is supplied the note belongs to the org (caller
+  must be a member); otherwise it is a personal note.
+  """
+  createNote(title: String, content: String, orgId: String): Note!
+}

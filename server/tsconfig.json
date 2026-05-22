@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@cubicecho/notes-db": ["../db/src/index.ts"],
+      "@cubicecho/notes-db/*": ["../db/src/*.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "generate_schema.ts"]
+}

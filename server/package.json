@@ -1,0 +1,28 @@
+{
+  "name": "@cubicecho/notes-server",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../.env --experimental-transform-types src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "@as-integrations/express4": "^1.1.2",
+    "@cubicecho/notes-db": "*",
+    "@graphql-tools/delegate": "^12.0.16",
+    "@vantreeseba/drizzle-graphql": "^1.0.3",
+    "cors": "^2.8.5",
+    "drizzle-orm": "~1.0.0-rc.2",
+    "express": "^4.21.2",
+    "graphql": "^16.9.0",
+    "graphql-middleware": "^6.1.35",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^25.6.0"
+  }
+}
