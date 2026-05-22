@@ -5,11 +5,12 @@ import type {
 } from '../../__generated__/resolvers.ts';
 import type { OrgMembership } from '../../context.ts';
 import {
-  type Action,
+  Actions,
   type AppAbility,
   type SubjectMap,
   type SubjectName,
   abilityOptions,
+  createSubjects,
   createTyped,
 } from './utils.ts';
 
@@ -24,7 +25,19 @@ export type AppSubjectName = SubjectName<Resolvers>;
 // typed() helper bound to this app's subject map.
 export const typed = createTyped<AppSubjectMap>();
 
-export type { AppAbility, Action };
+// Subject const — use instead of raw strings in can/cannot calls.
+// `satisfies`-style validation via createSubjects ensures this object covers
+// every AppSubjectName; TypeScript errors if the schema adds a new domain type
+// and this object isn't updated.
+export const Subject = createSubjects<AppSubjectMap>()({
+  User: 'User',
+  Note: 'Note',
+  Org: 'Org',
+  OrgMember: 'OrgMember',
+} as const);
+
+export { Actions };
+export type { AppAbility };
 
 // ---------------------------------------------------------------------------
 // defineAbilitiesFor
@@ -39,7 +52,7 @@ export function defineAbilitiesFor(
   );
 
   if (!userId) {
-    cannot('manage', 'all');
+    cannot(Actions.manage, 'all');
     return build(abilityOptions);
   }
 
@@ -49,35 +62,35 @@ export function defineAbilitiesFor(
     .map((m) => m.orgId);
 
   // ── Users ──────────────────────────────────────────────────────────────
-  cannot('create', 'User');
-  cannot('delete', 'User');
-  can('read', 'User');
-  can('update', 'User', { id: userId });
+  cannot(Actions.create, Subject.User);
+  cannot(Actions.delete, Subject.User);
+  can(Actions.read, Subject.User);
+  can(Actions.update, Subject.User, { id: userId });
 
   // ── Notes ──────────────────────────────────────────────────────────────
-  can('read', 'Note');
-  can('create', 'Note', { orgId: null });
+  can(Actions.read, Subject.Note);
+  can(Actions.create, Subject.Note, { orgId: null });
   if (memberOrgIds.length > 0) {
-    can('create', 'Note', { orgId: { $in: memberOrgIds } });
-    can('update', 'Note', { orgId: { $in: memberOrgIds } });
+    can(Actions.create, Subject.Note, { orgId: { $in: memberOrgIds } });
+    can(Actions.update, Subject.Note, { orgId: { $in: memberOrgIds } });
   }
-  can('update', 'Note', { userId });
-  cannot('delete', 'Note');
+  can(Actions.update, Subject.Note, { userId });
+  cannot(Actions.delete, Subject.Note);
 
   // ── Orgs ───────────────────────────────────────────────────────────────
-  can('read', 'Org');
-  can('create', 'Org');
+  can(Actions.read, Subject.Org);
+  can(Actions.create, Subject.Org);
   if (ownerOrgIds.length > 0) {
-    can('update', 'Org', { id: { $in: ownerOrgIds } });
-    can('delete', 'Org', { id: { $in: ownerOrgIds } });
+    can(Actions.update, Subject.Org, { id: { $in: ownerOrgIds } });
+    can(Actions.delete, Subject.Org, { id: { $in: ownerOrgIds } });
   }
 
   // ── OrgMembers ─────────────────────────────────────────────────────────
-  can('read', 'OrgMember');
+  can(Actions.read, Subject.OrgMember);
   if (ownerOrgIds.length > 0) {
-    can('create', 'OrgMember', { orgId: { $in: ownerOrgIds } });
-    can('update', 'OrgMember', { orgId: { $in: ownerOrgIds } });
-    can('delete', 'OrgMember', { orgId: { $in: ownerOrgIds } });
+    can(Actions.create, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
+    can(Actions.update, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
+    can(Actions.delete, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
   }
 
   return build(abilityOptions);

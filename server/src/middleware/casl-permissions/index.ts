@@ -7,125 +7,112 @@
  *
  *   ability.can('update', typed('User', { id: targetId }))
  *
- * Subject names are derived from the Resolvers type — no manual string lists.
+ * Subject names and subject map are derived from the Resolvers type — no
+ * manual type listings needed.
  */
 
-import type { Resolvers } from '../../__generated__/resolvers.ts';
+import type {
+  MutationCreateNoteArgs,
+  MutationCreateOrgArgs,
+  MutationCreateOrgMemberArgs,
+  MutationDeleteOrgMembersArgs,
+  MutationDeleteOrgsArgs,
+  MutationUpdateNotesArgs,
+  MutationUpdateOrgMembersArgs,
+  MutationUpdateOrgsArgs,
+  MutationUpdateUsersArgs,
+  Resolvers,
+} from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
-import {
-  type PermissionsMap,
-  type Rule,
-  getArgValue,
-} from '../permissions/utils.ts';
-import {
-  type Action,
-  type AppSubjectName,
-  defineAbilitiesFor,
-  typed,
-} from './abilities.ts';
+import { type PermissionsMap, deny } from '../permissions/utils.ts';
+import { Actions, Subject, defineAbilitiesFor, typed } from './abilities.ts';
+import { createRequireCan } from './utils.ts';
 
-// ---------------------------------------------------------------------------
-// Per-request ability builder (memberships already cached in context)
-// ---------------------------------------------------------------------------
+const { create, read, update, delete: del } = Actions;
+const { User, Note, Org, OrgMember } = Subject;
 
-async function buildAbility(context: Context) {
-  const memberships = await context.getUserMemberships();
-  return defineAbilitiesFor(context.userId, memberships);
-}
-
-// ---------------------------------------------------------------------------
-// Rule helpers
-// ---------------------------------------------------------------------------
-
-function denied(): Rule {
-  return () => {
-    throw new Error('Forbidden');
-  };
-}
-
-function requireCan(
-  action: Action,
-  subjectType: AppSubjectName | 'all',
-  getSubjectData?: (args: Record<string, unknown>) => Record<string, unknown>,
-): Rule {
-  return async (resolve, parent, args, context, info) => {
-    if (!context.userId) {
-      throw new Error('Not authenticated');
-    }
-    const ability = await buildAbility(context);
-    const instance =
-      getSubjectData && subjectType !== 'all'
-        ? typed(
-            subjectType as Parameters<typeof typed>[0],
-            getSubjectData(args as Record<string, unknown>),
-          )
-        : subjectType;
-
-    if (!ability.can(action, instance)) {
-      throw new Error('Forbidden');
-    }
-    return resolve(parent, args, context, info);
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Permissions map
-// ---------------------------------------------------------------------------
+// requireCan is bound to this app's context shape, ability builder, and
+// typed() subject constructor. Any project using the library creates its
+// own instance via createRequireCan with its own getAbility / isAuthenticated.
+const requireCan = createRequireCan<
+  Context,
+  ReturnType<typeof defineAbilitiesFor>
+>(
+  async (ctx) => {
+    const memberships = await ctx.getUserMemberships();
+    return defineAbilitiesFor(ctx.userId, memberships);
+  },
+  (ctx) => ctx.userId != null,
+  // biome-ignore lint/suspicious/noExplicitAny: typed<K> generic can't widen to (string) at the call site
+  typed as (type: string, attrs: Record<string, unknown>) => any,
+);
 
 export const caslPermissions: PermissionsMap<Resolvers> = {
   Query: {
     // TODO: scope these to the caller's own data
-    user: requireCan('read', 'User'),
-    userSingle: requireCan('read', 'User'),
-    note: requireCan('read', 'Note'),
-    noteSingle: requireCan('read', 'Note'),
-    org: requireCan('read', 'Org'),
-    orgSingle: requireCan('read', 'Org'),
-    orgMember: requireCan('read', 'OrgMember'),
-    orgMemberSingle: requireCan('read', 'OrgMember'),
-    myNotes: requireCan('read', 'Note'),
-    myOrgs: requireCan('read', 'Org'),
+    user: requireCan(read, User),
+    userSingle: requireCan(read, User),
+    note: requireCan(read, Note),
+    noteSingle: requireCan(read, Note),
+    org: requireCan(read, Org),
+    orgSingle: requireCan(read, Org),
+    orgMember: requireCan(read, OrgMember),
+    orgMemberSingle: requireCan(read, OrgMember),
+    myNotes: requireCan(read, Note),
+    myOrgs: requireCan(read, Org),
   },
   Mutation: {
     // Users
-    createUsers: denied(),
-    createUser: denied(),
-    updateUsers: requireCan('update', 'User', (args) => ({
-      id: getArgValue(args, 'id'),
+    createUsers: deny,
+    createUser: deny,
+    updateUsers: requireCan<MutationUpdateUsersArgs>(update, User, (args) => ({
+      id: args.where?.id?.eq,
     })),
-    deleteUsers: denied(),
+    deleteUsers: deny,
 
     // Notes
-    createNotes: denied(),
-    createNote: requireCan('create', 'Note', (args) => ({
-      orgId: getArgValue(args, 'orgId') ?? null,
+    createNotes: deny,
+    createNote: requireCan<MutationCreateNoteArgs>(create, Note, (args) => ({
+      orgId: args.values.orgId ?? null,
     })),
-    updateNotes: requireCan('update', 'Note', (args) => ({
-      orgId: getArgValue(args, 'orgId'),
-      userId: getArgValue(args, 'userId'),
+    updateNotes: requireCan<MutationUpdateNotesArgs>(update, Note, (args) => ({
+      orgId: args.where?.orgId?.eq,
+      userId: args.where?.userId?.eq,
     })),
-    deleteNotes: denied(),
+    deleteNotes: deny,
 
     // Orgs
-    createOrgs: denied(),
-    createOrg: requireCan('create', 'Org'),
-    updateOrgs: requireCan('update', 'Org', (args) => ({
-      id: getArgValue(args, 'id'),
+    createOrgs: deny,
+    createOrg: requireCan<MutationCreateOrgArgs>(create, Org),
+    updateOrgs: requireCan<MutationUpdateOrgsArgs>(update, Org, (args) => ({
+      id: args.where?.id?.eq,
     })),
-    deleteOrgs: requireCan('delete', 'Org', (args) => ({
-      id: getArgValue(args, 'id'),
+    deleteOrgs: requireCan<MutationDeleteOrgsArgs>(del, Org, (args) => ({
+      id: args.where?.id?.eq,
     })),
 
     // OrgMembers
-    createOrgMembers: denied(),
-    createOrgMember: requireCan('create', 'OrgMember', (args) => ({
-      orgId: getArgValue(args, 'orgId'),
-    })),
-    updateOrgMembers: requireCan('update', 'OrgMember', (args) => ({
-      orgId: getArgValue(args, 'orgId'),
-    })),
-    deleteOrgMembers: requireCan('delete', 'OrgMember', (args) => ({
-      orgId: getArgValue(args, 'orgId'),
-    })),
+    createOrgMembers: deny,
+    createOrgMember: requireCan<MutationCreateOrgMemberArgs>(
+      create,
+      OrgMember,
+      (args) => ({
+        orgId: args.values.orgId,
+      }),
+    ),
+    updateOrgMembers: requireCan<MutationUpdateOrgMembersArgs>(
+      update,
+      OrgMember,
+      (args) => ({
+        orgId: args.where?.orgId?.eq,
+      }),
+    ),
+    deleteOrgMembers: requireCan<MutationDeleteOrgMembersArgs>(
+      del,
+      OrgMember,
+      (args) => ({
+        orgId: args.where?.orgId?.eq,
+      }),
+    ),
   },
 };
