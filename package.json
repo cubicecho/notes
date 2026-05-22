@@ -15,8 +15,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "npm run codegen && vitest run",
-    "test:watch": "vitest",
+    "test": "npm run codegen && node --experimental-strip-types --test server/src/__tests__/resolvers/*.test.ts",
     "db:generate": "npm run db:generate -w @cubicecho/notes-db",
     "db:migrate": "npm run db:migrate -w @cubicecho/notes-db",
     "db:studio": "npm run db:studio -w @cubicecho/notes-db",
@@ -35,10 +34,8 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vantreeseba/graphql-mocks": "^1.0.5",
-    "@vitest/coverage-v8": "^4.1.6",
     "concurrently": "^9.1.2",
-    "typescript": "~5.9.2",
-    "vitest": "^4.1.5"
+    "typescript": "~5.9.2"
   },
   "resolutions": {
     "graphql": "16.10.0"

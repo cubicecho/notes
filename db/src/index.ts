@@ -16,8 +16,7 @@ if (databaseUrl) {
   const { drizzle } = await import('drizzle-orm/postgres-js');
   const postgres = await import('postgres');
   const client = postgres.default(databaseUrl);
-  // @ts-expect-error drizzle-orm 1.0-beta removed `schema` from config types
-  db = drizzle({ client, schema, relations });
+  db = drizzle({ client, relations });
 
   const { migrate } = await import('drizzle-orm/postgres-js/migrator');
   await migrate(db, { migrationsFolder });
@@ -31,8 +30,7 @@ if (databaseUrl) {
   // in-memory when no dir specified (tests, schema generation)
   const client = dir ? new PGlite(dir) : new PGlite();
   await client.waitReady;
-  // @ts-expect-error drizzle-orm 1.0-beta removed `schema` from config types
-  db = drizzle({ client, schema, relations });
+  db = drizzle({ client, relations });
 
   await migrate(db, { migrationsFolder });
 }
@@ -50,8 +48,11 @@ export async function createInMemoryDb() {
 
   const client = new PGlite();
   await client.waitReady;
-  // @ts-expect-error drizzle-orm 1.0-beta removed `schema` from config types
-  const testDb = drizzle({ client, schema, relations });
+
+  const testDb = drizzle({
+    client,
+    relations,
+  });
   await migrate(testDb, { migrationsFolder });
   return testDb;
 }

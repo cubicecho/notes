@@ -1,15 +1,20 @@
+import assert from 'node:assert/strict';
+import { before, beforeEach, describe, it } from 'node:test';
 import { notes, orgMembers, orgs, users } from '@cubicecho/notes-db';
-import { execute, parse } from 'graphql';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { createTestContext, first } from '../helpers/db.ts';
+import { graphql } from 'graphql';
+import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
 describe('permissions', () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId1: string;
   let userId2: string;
 
-  beforeEach(async () => {
+  before(async () => {
     ctx = await createTestContext();
+  });
+
+  beforeEach(async () => {
+    await cleanDb(ctx.db);
 
     userId1 = first(
       await ctx.db
@@ -27,65 +32,63 @@ describe('permissions', () => {
 
   describe('users', () => {
     it('denies createUser', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(
+        source:
           'mutation { createUser(values: { email: "new@example.com" }) { id } }',
-        ),
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('denies createUsers', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(
+        source:
           'mutation { createUsers(values: [{ email: "new@example.com" }]) { id } }',
-        ),
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('denies deleteUsers regardless of caller', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           deleteUsers(where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: userId1 },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('allows updateUsers when caller is updating themselves', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           updateUsers(set: { email: "alice2@example.com" }, where: { id: { eq: $id } }) { id email }
-        }`),
+        }`,
         variableValues: { id: userId1 },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
     });
 
     it('denies updateUsers when caller is updating a different user', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           updateUsers(set: { email: "hacked@example.com" }, where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 
@@ -105,53 +108,53 @@ describe('permissions', () => {
     });
 
     it('allows updateOrgs when caller is the org owner', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           updateOrgs(set: { name: "Renamed" }, where: { id: { eq: $id } }) { id name }
-        }`),
+        }`,
         variableValues: { id: orgId },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
     });
 
     it('denies updateOrgs when caller is not the org owner', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           updateOrgs(set: { name: "Hacked" }, where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: orgId },
         contextValue: ctx.makeContext(userId2),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('allows deleteOrgs when caller is the org owner', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           deleteOrgs(where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: orgId },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
     });
 
     it('denies deleteOrgs when caller is not the org owner', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           deleteOrgs(where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: orgId },
         contextValue: ctx.makeContext(userId2),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 
@@ -164,45 +167,43 @@ describe('permissions', () => {
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId1, role: 'owner' });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           createOrgMembers(values: [{ orgId: $orgId, userId: $userId }]) { orgId userId }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 
   describe('orgs (bulk)', () => {
     it('denies createOrgs', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(
-          'mutation { createOrgs(values: [{ name: "Bulk" }]) { id } }',
-        ),
+        source: 'mutation { createOrgs(values: [{ name: "Bulk" }]) { id } }',
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 
   describe('notes', () => {
     it('denies createNotes (bulk)', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($userId: String!) {
+        source: `mutation($userId: String!) {
           createNotes(values: [{ userId: $userId, title: "Bulk" }]) { id }
-        }`),
+        }`,
         variableValues: { userId: userId1 },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('denies deleteNotes', async () => {
@@ -212,16 +213,16 @@ describe('permissions', () => {
           .values({ userId: userId1, title: 'Mine', content: '' })
           .returning(),
       );
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($id: String!) {
+        source: `mutation($id: String!) {
           deleteNotes(where: { id: { eq: $id } }) { id }
-        }`),
+        }`,
         variableValues: { id: note.id },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('denies updateNotes for org notes when caller is not a member', async () => {
@@ -231,23 +232,25 @@ describe('permissions', () => {
       await ctx.db
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId2, role: 'owner' });
-      await ctx.db.insert(notes).values({
-        userId: userId2,
-        orgId: org.id,
-        title: 'Secret',
-        content: '',
-      });
+      await ctx.db
+        .insert(notes)
+        .values({
+          userId: userId2,
+          orgId: org.id,
+          title: 'Secret',
+          content: '',
+        });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!) {
+        source: `mutation($orgId: String!) {
           updateNotes(set: { title: "Hacked" }, where: { orgId: { eq: $orgId } }) { id }
-        }`),
+        }`,
         variableValues: { orgId: org.id },
         contextValue: ctx.makeContext(userId1),
       });
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 });

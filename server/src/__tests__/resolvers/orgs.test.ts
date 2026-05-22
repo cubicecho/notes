@@ -1,15 +1,20 @@
+import assert from 'node:assert/strict';
+import { before, beforeEach, describe, it } from 'node:test';
 import { orgMembers, orgs, users } from '@cubicecho/notes-db';
-import { execute, parse } from 'graphql';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { createTestContext, first } from '../helpers/db.ts';
+import { graphql } from 'graphql';
+import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
 describe('orgs resolvers', () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId1: string;
   let userId2: string;
 
-  beforeEach(async () => {
+  before(async () => {
     ctx = await createTestContext();
+  });
+
+  beforeEach(async () => {
+    await cleanDb(ctx.db);
 
     userId1 = first(
       await ctx.db
@@ -27,33 +32,31 @@ describe('orgs resolvers', () => {
 
   describe('createOrg', () => {
     it('creates an org and adds caller as owner', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(
-          'mutation { createOrg(values: { name: "ACME" }) { id name } }',
-        ),
+        source: 'mutation { createOrg(values: { name: "ACME" }) { id name } }',
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const org = result.data?.createOrg as { id: string; name: string };
-      expect(org.name).toBe('ACME');
+      assert.equal(org.name, 'ACME');
 
       const membership = await ctx.db.query.orgMembers.findFirst({
         where: { orgId: org.id, userId: userId1 },
       });
-      expect(membership?.role).toBe('owner');
+      assert.equal(membership?.role, 'owner');
     });
 
     it('returns error when not authenticated', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('mutation { createOrg(values: { name: "X" }) { id } }'),
+        source: 'mutation { createOrg(values: { name: "X" }) { id } }',
         contextValue: ctx.makeContext(),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not authenticated/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Not authenticated/);
     });
   });
 
@@ -65,7 +68,7 @@ describe('orgs resolvers', () => {
       const org2 = first(
         await ctx.db.insert(orgs).values({ name: 'Org B' }).returning(),
       );
-      await ctx.db.insert(orgs).values({ name: 'Org C' }); // user1 is NOT in this one
+      await ctx.db.insert(orgs).values({ name: 'Org C' });
 
       await ctx.db.insert(orgMembers).values([
         { orgId: org1.id, userId: userId1, role: 'owner' },
@@ -73,27 +76,26 @@ describe('orgs resolvers', () => {
         { orgId: org2.id, userId: userId2, role: 'owner' },
       ]);
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('query { myOrgs { id name } }'),
+        source: 'query { myOrgs { id name } }',
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const myOrgs = result.data?.myOrgs as Array<{ name: string }>;
-      const names = myOrgs.map((o) => o.name).sort();
-      expect(names).toEqual(['Org A', 'Org B']);
+      assert.deepEqual(myOrgs.map((o) => o.name).sort(), ['Org A', 'Org B']);
     });
 
     it('returns error when not authenticated', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('query { myOrgs { id } }'),
+        source: 'query { myOrgs { id } }',
         contextValue: ctx.makeContext(),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not authenticated/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Not authenticated/);
     });
   });
 
@@ -106,23 +108,23 @@ describe('orgs resolvers', () => {
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId1, role: 'owner' });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId userId role }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const membership = result.data?.createOrgMember as {
         orgId: string;
         userId: string;
         role: string;
       };
-      expect(membership.userId).toBe(userId2);
-      expect(membership.role).toBe('member');
+      assert.equal(membership.userId, userId2);
+      assert.equal(membership.role, 'member');
     });
 
     it('rejects when caller is not an owner', async () => {
@@ -133,17 +135,17 @@ describe('orgs resolvers', () => {
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId1, role: 'member' });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
 
     it('rejects when caller is not a member at all', async () => {
@@ -154,17 +156,17 @@ describe('orgs resolvers', () => {
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId2, role: 'owner' });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 
@@ -178,25 +180,25 @@ describe('orgs resolvers', () => {
         { orgId: org.id, userId: userId2, role: 'member' },
       ]);
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           deleteOrgMembers(where: { orgId: { eq: $orgId }, userId: { eq: $userId } }) { orgId userId }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const removed = result.data?.deleteOrgMembers as Array<{
         userId: string;
       }>;
-      expect(first(removed).userId).toBe(userId2);
+      assert.equal(first(removed).userId, userId2);
 
       const stillMember = await ctx.db.query.orgMembers.findFirst({
         where: { orgId: org.id, userId: userId2 },
       });
-      expect(stillMember).toBeUndefined();
+      assert.equal(stillMember, undefined);
     });
 
     it('rejects when caller is not an owner', async () => {
@@ -207,17 +209,17 @@ describe('orgs resolvers', () => {
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId1, role: 'member' });
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse(`mutation($orgId: String!, $userId: String!) {
+        source: `mutation($orgId: String!, $userId: String!) {
           deleteOrgMembers(where: { orgId: { eq: $orgId }, userId: { eq: $userId } }) { orgId }
-        }`),
+        }`,
         variableValues: { orgId: org.id, userId: userId2 },
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
     });
   });
 });

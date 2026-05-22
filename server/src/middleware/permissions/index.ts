@@ -26,7 +26,7 @@ import type {
 import type { Context } from '../../context.ts';
 import { Actions, Subject, defineAbilitiesFor, typed } from './abilities.ts';
 import { type PermissionsMap, deny } from './utils.ts';
-import { createRequireCan } from './utils.ts';
+import { createCan } from './utils.ts';
 
 const { create, read, update, delete: del } = Actions;
 const { User, Note, Org, OrgMember } = Subject;
@@ -34,10 +34,7 @@ const { User, Note, Org, OrgMember } = Subject;
 // requireCan is bound to this app's context shape, ability builder, and
 // typed() subject constructor. Any project using the library creates its
 // own instance via createRequireCan with its own getAbility / isAuthenticated.
-const requireCan = createRequireCan<
-  Context,
-  ReturnType<typeof defineAbilitiesFor>
->(
+const canUser = createCan<Context, ReturnType<typeof defineAbilitiesFor>>(
   async (ctx) => {
     const memberships = await ctx.getUserMemberships();
     return defineAbilitiesFor(ctx.userId, memberships);
@@ -50,32 +47,32 @@ const requireCan = createRequireCan<
 export const permissions: PermissionsMap<Resolvers> = {
   Query: {
     // TODO: scope these to the caller's own data
-    user: requireCan(read, User),
-    userSingle: requireCan(read, User),
-    note: requireCan(read, Note),
-    noteSingle: requireCan(read, Note),
-    org: requireCan(read, Org),
-    orgSingle: requireCan(read, Org),
-    orgMember: requireCan(read, OrgMember),
-    orgMemberSingle: requireCan(read, OrgMember),
-    myNotes: requireCan(read, Note),
-    myOrgs: requireCan(read, Org),
+    user: canUser(read, User),
+    userSingle: canUser(read, User),
+    note: canUser(read, Note),
+    noteSingle: canUser(read, Note),
+    org: canUser(read, Org),
+    orgSingle: canUser(read, Org),
+    orgMember: canUser(read, OrgMember),
+    orgMemberSingle: canUser(read, OrgMember),
+    myNotes: canUser(read, Note),
+    myOrgs: canUser(read, Org),
   },
   Mutation: {
     // Users
     createUsers: deny,
     createUser: deny,
-    updateUsers: requireCan<MutationUpdateUsersArgs>(update, User, (args) => ({
+    updateUsers: canUser<MutationUpdateUsersArgs>(update, User, (args) => ({
       id: args.where?.id?.eq,
     })),
     deleteUsers: deny,
 
     // Notes
     createNotes: deny,
-    createNote: requireCan<MutationCreateNoteArgs>(create, Note, (args) => ({
+    createNote: canUser<MutationCreateNoteArgs>(create, Note, (args) => ({
       orgId: args.values.orgId ?? null,
     })),
-    updateNotes: requireCan<MutationUpdateNotesArgs>(update, Note, (args) => ({
+    updateNotes: canUser<MutationUpdateNotesArgs>(update, Note, (args) => ({
       orgId: args.where?.orgId?.eq,
       userId: args.where?.userId?.eq,
     })),
@@ -83,31 +80,31 @@ export const permissions: PermissionsMap<Resolvers> = {
 
     // Orgs
     createOrgs: deny,
-    createOrg: requireCan<MutationCreateOrgArgs>(create, Org),
-    updateOrgs: requireCan<MutationUpdateOrgsArgs>(update, Org, (args) => ({
+    createOrg: canUser<MutationCreateOrgArgs>(create, Org),
+    updateOrgs: canUser<MutationUpdateOrgsArgs>(update, Org, (args) => ({
       id: args.where?.id?.eq,
     })),
-    deleteOrgs: requireCan<MutationDeleteOrgsArgs>(del, Org, (args) => ({
+    deleteOrgs: canUser<MutationDeleteOrgsArgs>(del, Org, (args) => ({
       id: args.where?.id?.eq,
     })),
 
     // OrgMembers
     createOrgMembers: deny,
-    createOrgMember: requireCan<MutationCreateOrgMemberArgs>(
+    createOrgMember: canUser<MutationCreateOrgMemberArgs>(
       create,
       OrgMember,
       (args) => ({
         orgId: args.values.orgId,
       }),
     ),
-    updateOrgMembers: requireCan<MutationUpdateOrgMembersArgs>(
+    updateOrgMembers: canUser<MutationUpdateOrgMembersArgs>(
       update,
       OrgMember,
       (args) => ({
         orgId: args.where?.orgId?.eq,
       }),
     ),
-    deleteOrgMembers: requireCan<MutationDeleteOrgMembersArgs>(
+    deleteOrgMembers: canUser<MutationDeleteOrgMembersArgs>(
       del,
       OrgMember,
       (args) => ({

@@ -56,19 +56,28 @@ export type SubjectMap<TResolvers, TResolversTypes> = {
 };
 
 // ---------------------------------------------------------------------------
-// ArgsOf<TResolverField>
+// ArgsOf / ParentOf / ContextOf
 //
-// Extracts the args type from a generated resolver field type.
-// Resolver fields are (parent, args, context, info) => result functions,
-// so the second parameter is the args.
+// Extract the parent, args, or context type from a generated resolver field.
+// Resolver fields are (parent: TParent, args: TArgs, context: TContext, info)
+// functions — each helper infers the type at the relevant position.
 //
-//   ArgsOf<MutationResolvers['updateUsers']>
-//   → MutationUpdateUsersArgs  (= { set: UpdateUserInput; where?: UserFilters })
+//   type F = NoteResolvers['id'];
+//   ParentOf<F>  → Note         (the object being resolved)
+//   ArgsOf<F>    → {}           (no args on a scalar field)
+//   ContextOf<F> → Context      (the request context)
 //
-// Use this to type the getSubjectData callback in requireCan so callers get
-// full autocomplete and type checking on the specific mutation/query args
-// instead of Record<string, unknown>.
+//   type M = MutationResolvers['updateUsers'];
+//   ArgsOf<M>    → MutationUpdateUsersArgs
+//   ContextOf<M> → Context
 // ---------------------------------------------------------------------------
+
+export type ParentOf<TResolverField> = TResolverField extends (
+  parent: infer TParent,
+  ...rest: unknown[]
+) => unknown
+  ? TParent
+  : unknown;
 
 export type ArgsOf<TResolverField> = TResolverField extends (
   parent: unknown,
@@ -77,6 +86,15 @@ export type ArgsOf<TResolverField> = TResolverField extends (
 ) => unknown
   ? TArgs
   : Record<string, unknown>;
+
+export type ContextOf<TResolverField> = TResolverField extends (
+  parent: unknown,
+  args: unknown,
+  context: infer TContext,
+  ...rest: unknown[]
+) => unknown
+  ? TContext
+  : unknown;
 
 // ---------------------------------------------------------------------------
 // Rule — the callable middleware form used in PermissionsMap entries.
@@ -170,7 +188,7 @@ type ResolveFn = (
   info?: GraphQLResolveInfo,
 ) => Promise<any>;
 
-export function createRequireCan<TContext, TAbility extends AbilityLike>(
+export function createCan<TContext, TAbility extends AbilityLike>(
   getAbility: (context: TContext) => Promise<TAbility>,
   isAuthenticated: (context: TContext) => boolean,
   buildSubject?: (type: string, attrs: Record<string, unknown>) => unknown,

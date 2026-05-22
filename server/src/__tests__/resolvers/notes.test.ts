@@ -1,15 +1,20 @@
+import assert from 'node:assert/strict';
+import { before, beforeEach, describe, it } from 'node:test';
 import { notes, orgMembers, orgs, users } from '@cubicecho/notes-db';
-import { execute, parse } from 'graphql';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { createTestContext, first } from '../helpers/db.ts';
+import { graphql } from 'graphql';
+import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
 describe('notes resolvers', () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
   let userId1: string;
   let userId2: string;
 
-  beforeEach(async () => {
+  before(async () => {
     ctx = await createTestContext();
+  });
+
+  beforeEach(async () => {
+    await cleanDb(ctx.db);
 
     userId1 = first(
       await ctx.db
@@ -32,21 +37,21 @@ describe('notes resolvers', () => {
         { userId: userId2, title: 'Bob Note', content: 'world' },
       ]);
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('query { myNotes { id title userId } }'),
+        source: 'query { myNotes { id title userId } }',
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const myNotes = result.data?.myNotes as Array<{
         id: string;
         title: string;
         userId: string;
       }>;
-      expect(myNotes).toHaveLength(1);
-      expect(first(myNotes).title).toBe('Alice Note');
-      expect(first(myNotes).userId).toBe(userId1);
+      assert.equal(myNotes.length, 1);
+      assert.equal(first(myNotes).title, 'Alice Note');
+      assert.equal(first(myNotes).userId, userId1);
     });
 
     it('does not include org notes owned by others', async () => {
@@ -61,26 +66,29 @@ describe('notes resolvers', () => {
         { userId: userId2, orgId: org.id, title: 'Org Note', content: '' },
       ]);
 
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('query { myNotes { title } }'),
+        source: 'query { myNotes { title } }',
         contextValue: ctx.makeContext(userId1),
       });
 
-      expect(result.errors).toBeUndefined();
+      assert.equal(result.errors, undefined);
       const myNotes = result.data?.myNotes as Array<{ title: string }>;
-      expect(myNotes.map((n) => n.title)).toEqual(['Personal']);
+      assert.deepEqual(
+        myNotes.map((n) => n.title),
+        ['Personal'],
+      );
     });
 
     it('returns error when not authenticated', async () => {
-      const result = await execute({
+      const result = await graphql({
         schema: ctx.schema,
-        document: parse('query { myNotes { id } }'),
+        source: 'query { myNotes { id } }',
         contextValue: ctx.makeContext(),
       });
 
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not authenticated/);
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Not authenticated/);
     });
   });
 });

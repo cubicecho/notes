@@ -1,4 +1,10 @@
-import { createInMemoryDb, type orgMembers } from '@cubicecho/notes-db';
+import {
+  createInMemoryDb,
+  notes,
+  orgMembers,
+  orgs,
+  users,
+} from '@cubicecho/notes-db';
 import type { Context } from '../../context.ts';
 import { buildAppSchema } from '../../schema/index.ts';
 
@@ -22,13 +28,23 @@ export async function createTestContext() {
               ms.map((m) => ({ orgId: m.orgId, role: m.role })),
             );
         }
-        // biome-ignore lint/style/noNonNullAssertion: assigned in the branch above
-        return membershipsPromise!;
+
+        return membershipsPromise;
       },
     };
   };
 
   return { db, schema, makeContext };
+}
+
+/** Deletes all rows from every table in FK-safe order. */
+export async function cleanDb(
+  db: Awaited<ReturnType<typeof createTestContext>>['db'],
+) {
+  await db.delete(orgMembers);
+  await db.delete(notes);
+  await db.delete(orgs);
+  await db.delete(users);
 }
 
 /** Unwraps the first element of an array; throws if empty. */
