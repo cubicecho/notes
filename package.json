@@ -1,0 +1,46 @@
+{
+  "name": "cubicecho-notes",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CubicEcho Notes — a web-first Markdown notes app",
+  "private": true,
+  "workspaces": ["app", "server", "db", "electron"],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:app\"",
+    "dev:server": "npm run dev -w @cubicecho/notes-server",
+    "dev:app": "cd app && npx expo start --web",
+    "build": "npm run build:app && npm run build:server",
+    "build:app": "cd app && npx expo export --platform web",
+    "build:server": "npm run build -w @cubicecho/notes-server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "npm run codegen && vitest run",
+    "test:watch": "vitest",
+    "db:generate": "npm run db:generate -w @cubicecho/notes-db",
+    "db:migrate": "npm run db:migrate -w @cubicecho/notes-db",
+    "db:studio": "npm run db:studio -w @cubicecho/notes-db",
+    "codegen": "npm run generate:schema && npm run codegen:server && npm run codegen:client",
+    "generate:schema": "node --experimental-strip-types server/generate_schema.ts",
+    "codegen:server": "graphql-codegen-esm --config codegen.server.ts",
+    "codegen:client": "graphql-codegen --config codegen.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@graphql-codegen/cli": "^7.0.0",
+    "@graphql-codegen/client-preset": "^6.0.0",
+    "@graphql-codegen/schema-ast": "^6.0.0",
+    "@graphql-codegen/typescript": "^6.0.0",
+    "@graphql-codegen/typescript-resolvers": "^6.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vantreeseba/graphql-mocks": "^1.0.5",
+    "@vitest/coverage-v8": "^4.1.6",
+    "concurrently": "^9.1.2",
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.5"
+  },
+  "resolutions": {
+    "graphql": "16.10.0"
+  }
+}

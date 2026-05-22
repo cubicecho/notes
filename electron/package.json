@@ -1,0 +1,9 @@
+{
+  "name": "@cubicecho/notes-electron",
+  "version": "0.1.0",
+  "description": "Electron wrapper for CubicEcho Notes (placeholder — not yet implemented)",
+  "private": true,
+  "scripts": {
+    "start": "echo 'Electron wrapper not yet implemented. Run the web app instead.'"
+  }
+}

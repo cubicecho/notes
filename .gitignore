@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.expo/
+pgdata/
+coverage/
+*.env
+!.env.example
+
+# Generated — committed via git add -f
+# app/src/__generated__/
+# server/src/__generated__/
+
+# OS
+.DS_Store

@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Notes",
+    "slug": "cubicecho-notes",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "notes",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "platforms": ["ios", "android", "web"],
+    "plugins": ["expo-router"]
+  }
+}
