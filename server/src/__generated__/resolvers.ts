@@ -142,11 +142,6 @@ export type InnerOrder = {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  /**
-   * Add a user to an org. Caller must be an owner of the org.
-   * Defaults to role 'member' if not specified.
-   */
-  addOrgMember: OrgMember;
   createNote?: Maybe<Note>;
   createNotes: Array<Note>;
   createOrg?: Maybe<Org>;
@@ -159,19 +154,10 @@ export type Mutation = {
   deleteOrgMembers: Array<OrgMember>;
   deleteOrgs: Array<Org>;
   deleteUsers: Array<User>;
-  /** Remove a user from an org. Caller must be an owner of the org. */
-  removeOrgMember: OrgMember;
   updateNotes: Array<Note>;
   updateOrgMembers: Array<OrgMember>;
   updateOrgs: Array<Org>;
   updateUsers: Array<User>;
-};
-
-
-export type MutationAddOrgMemberArgs = {
-  orgId: Scalars['String']['input'];
-  role?: InputMaybe<OrgMembersRoleEnum>;
-  userId: Scalars['String']['input'];
 };
 
 
@@ -232,12 +218,6 @@ export type MutationDeleteOrgsArgs = {
 
 export type MutationDeleteUsersArgs = {
   where?: InputMaybe<UserFilters>;
-};
-
-
-export type MutationRemoveOrgMemberArgs = {
-  orgId: Scalars['String']['input'];
-  userId: Scalars['String']['input'];
 };
 
 
@@ -668,8 +648,7 @@ export type UserOrderBy = {
   updatedAt?: InputMaybe<InnerOrder>;
 };
 
-export type WithIndex<TObject> = TObject & Record<string, any>;
-export type ResolversObject<TObject> = WithIndex<TObject>;
+
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
 
@@ -741,7 +720,7 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 
 /** Mapping between all available schema types and the resolvers types */
-export type ResolversTypes = ResolversObject<{
+export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   CreateNoteInput: CreateNoteInput;
   CreateOrgInput: CreateOrgInput;
@@ -783,10 +762,10 @@ export type ResolversTypes = ResolversObject<{
   UserFilters: UserFilters;
   UserFiltersOr: UserFiltersOr;
   UserOrderBy: UserOrderBy;
-}>;
+};
 
 /** Mapping between all available schema types and the resolvers parents */
-export type ResolversParentTypes = ResolversObject<{
+export type ResolversParentTypes = {
   Boolean: Scalars['Boolean']['output'];
   CreateNoteInput: CreateNoteInput;
   CreateOrgInput: CreateOrgInput;
@@ -826,14 +805,13 @@ export type ResolversParentTypes = ResolversObject<{
   UserFilters: UserFilters;
   UserFiltersOr: UserFiltersOr;
   UserOrderBy: UserOrderBy;
-}>;
+};
 
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
 
-export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
-  addOrgMember?: Resolver<ResolversTypes['OrgMember'], ParentType, ContextType, RequireFields<MutationAddOrgMemberArgs, 'orgId' | 'userId'>>;
+export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   createNote?: Resolver<Maybe<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationCreateNoteArgs, 'values'>>;
   createNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationCreateNotesArgs, 'values'>>;
   createOrg?: Resolver<Maybe<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationCreateOrgArgs, 'values'>>;
@@ -846,14 +824,13 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   deleteOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<MutationDeleteOrgMembersArgs>>;
   deleteOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, Partial<MutationDeleteOrgsArgs>>;
   deleteUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, Partial<MutationDeleteUsersArgs>>;
-  removeOrgMember?: Resolver<ResolversTypes['OrgMember'], ParentType, ContextType, RequireFields<MutationRemoveOrgMemberArgs, 'orgId' | 'userId'>>;
   updateNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationUpdateNotesArgs, 'set'>>;
   updateOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationUpdateOrgMembersArgs, 'set'>>;
   updateOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationUpdateOrgsArgs, 'set'>>;
   updateUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationUpdateUsersArgs, 'set'>>;
-}>;
+};
 
-export type NoteResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Note'] = ResolversParentTypes['Note']> = ResolversObject<{
+export type NoteResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Note'] = ResolversParentTypes['Note']> = {
   content?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -863,27 +840,27 @@ export type NoteResolvers<ContextType = Context, ParentType extends ResolversPar
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   user?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, Partial<NoteUserArgs>>;
   userId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-}>;
+};
 
-export type OrgResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Org'] = ResolversParentTypes['Org']> = ResolversObject<{
+export type OrgResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Org'] = ResolversParentTypes['Org']> = {
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   members?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<OrgMembersArgs>>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   notes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<OrgNotesArgs>>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
-}>;
+};
 
-export type OrgMemberResolvers<ContextType = Context, ParentType extends ResolversParentTypes['OrgMember'] = ResolversParentTypes['OrgMember']> = ResolversObject<{
+export type OrgMemberResolvers<ContextType = Context, ParentType extends ResolversParentTypes['OrgMember'] = ResolversParentTypes['OrgMember']> = {
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   org?: Resolver<Maybe<ResolversTypes['Org']>, ParentType, ContextType, Partial<OrgMemberOrgArgs>>;
   orgId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['OrgMembersRoleEnum'], ParentType, ContextType>;
   user?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, Partial<OrgMemberUserArgs>>;
   userId?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-}>;
+};
 
-export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
+export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   myNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType>;
   myOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType>;
   note?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<QueryNoteArgs>>;
@@ -894,18 +871,18 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   orgSingle?: Resolver<Maybe<ResolversTypes['Org']>, ParentType, ContextType, Partial<QueryOrgSingleArgs>>;
   user?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, Partial<QueryUserArgs>>;
   userSingle?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, Partial<QueryUserSingleArgs>>;
-}>;
+};
 
-export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = ResolversObject<{
+export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   notes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<UserNotesArgs>>;
   orgMemberships?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<UserOrgMembershipsArgs>>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
-}>;
+};
 
-export type Resolvers<ContextType = Context> = ResolversObject<{
+export type Resolvers<ContextType = Context> = {
   DateTime?: GraphQLScalarType;
   Mutation?: MutationResolvers<ContextType>;
   Note?: NoteResolvers<ContextType>;
@@ -913,5 +890,5 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   OrgMember?: OrgMemberResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
-}>;
+};
 

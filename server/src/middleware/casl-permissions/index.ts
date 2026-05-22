@@ -1,17 +1,15 @@
 /**
  * CASL-based permissions middleware — parallel implementation to permissions/.
  *
- * Instead of hand-coded rule functions, abilities are defined once per request
- * using CASL's MongoDB-query-style conditions (AbilityBuilder + createMongoAbility).
- * Each middleware entry extracts the relevant subject data from GraphQL args and
- * checks it against the ability with:
- *   ability.can(action, subject('SubjectType', { field: value }))
+ * Abilities are defined per-request via defineAbilitiesFor() using MongoDB-style
+ * conditions. Subject type detection uses __typename (already present on all
+ * generated GraphQL types) so no ForcedSubject or subject() imports are needed.
  *
- * The subject() helper tags a plain object so CASL knows which type to test
- * conditions against without requiring class instances.
+ *   ability.can('update', typed('User', { id: targetId }))
+ *
+ * Subject names are derived from the Resolvers type — no manual string lists.
  */
 
-import { subject } from '@casl/ability';
 import type { Resolvers } from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
 import {
@@ -19,7 +17,12 @@ import {
   type Rule,
   getArgValue,
 } from '../permissions/utils.ts';
-import { defineAbilitiesFor } from './abilities.ts';
+import {
+  type Action,
+  type AppSubjectName,
+  defineAbilitiesFor,
+  typed,
+} from './abilities.ts';
 
 // ---------------------------------------------------------------------------
 // Per-request ability builder (memberships already cached in context)
@@ -35,27 +38,30 @@ async function buildAbility(context: Context) {
 // ---------------------------------------------------------------------------
 
 function denied(): Rule {
-  return (_resolve, _parent, _args, _context, _info) => {
+  return () => {
     throw new Error('Forbidden');
   };
 }
 
-type AppAction = 'create' | 'read' | 'update' | 'delete' | 'manage';
-type AppSubject = 'User' | 'Note' | 'Org' | 'OrgMember' | 'all';
-
 function requireCan(
-  action: AppAction,
-  subjectType: AppSubject,
+  action: Action,
+  subjectType: AppSubjectName | 'all',
   getSubjectData?: (args: Record<string, unknown>) => Record<string, unknown>,
 ): Rule {
   return async (resolve, parent, args, context, info) => {
+    if (!context.userId) {
+      throw new Error('Not authenticated');
+    }
     const ability = await buildAbility(context);
-    // biome-ignore lint/suspicious/noExplicitAny: subject() return type doesn't align with AppAbility Subjects union without casting
-    const subjectInstance: any = getSubjectData
-      ? subject(subjectType, getSubjectData(args as Record<string, unknown>))
-      : subjectType;
+    const instance =
+      getSubjectData && subjectType !== 'all'
+        ? typed(
+            subjectType as Parameters<typeof typed>[0],
+            getSubjectData(args as Record<string, unknown>),
+          )
+        : subjectType;
 
-    if (!ability.can(action, subjectInstance)) {
+    if (!ability.can(action, instance)) {
       throw new Error('Forbidden');
     }
     return resolve(parent, args, context, info);

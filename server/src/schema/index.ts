@@ -8,7 +8,7 @@ import { buildSchema } from '@vantreeseba/drizzle-graphql';
 import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
 import { applyMiddleware } from 'graphql-middleware';
-import { permissions } from '../middleware/permissions/index.ts';
+import { caslPermissions } from '../middleware/casl-permissions/index.ts';
 import { noteResolvers } from './resolvers/notes.ts';
 import { orgResolvers } from './resolvers/orgs.ts';
 
@@ -35,5 +35,5 @@ export function buildAppSchema(db: DB): GraphQLSchema {
     resolvers: mergeResolvers([noteResolvers, orgResolvers]),
   });
 
-  return applyMiddleware(withResolvers, permissions);
+  return applyMiddleware(withResolvers, caslPermissions);
 }

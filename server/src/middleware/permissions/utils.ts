@@ -6,12 +6,13 @@ import type {
 import type { Context } from '../../context.ts';
 
 // Resolve is the next-resolver function passed to middleware by graphql-middleware.
+// biome-ignore lint/suspicious/noExplicitAny: must match IMiddlewareResolver's Promise<any> return
 type Resolve = (
   parent?: unknown,
   args?: unknown,
   context?: unknown,
   info?: GraphQLResolveInfo,
-) => Promise<unknown>;
+) => Promise<any>;
 
 // Middleware is the full graphql-middleware function type (callable or options object).
 export type Middleware = IMiddlewareFunction<unknown, Context>;
@@ -25,7 +26,7 @@ export type Rule = (
   args: unknown,
   context: Context,
   info: GraphQLResolveInfo,
-) => Promise<unknown> | unknown;
+) => Promise<any>;
 
 /**
  * A permissions map derived from the generated resolver types.

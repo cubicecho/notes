@@ -1,56 +1,33 @@
-import {
-  AbilityBuilder,
-  type ForcedSubject,
-  type MongoAbility,
-  createMongoAbility,
-} from '@casl/ability';
+import { AbilityBuilder, createMongoAbility } from '@casl/ability';
+import type {
+  Resolvers,
+  ResolversTypes,
+} from '../../__generated__/resolvers.ts';
 import type { OrgMembership } from '../../context.ts';
+import {
+  type Action,
+  type AppAbility,
+  type SubjectMap,
+  type SubjectName,
+  abilityOptions,
+  createTyped,
+} from './utils.ts';
 
 // ---------------------------------------------------------------------------
-// Subject attribute interfaces
-// Each interface defines the fields CASL conditions can match against.
-// ForcedSubject<'Name'> tags objects so CASL routes them to the right rules.
+// App-specific bindings — fully derived from the generated schema types.
+// No manual model-type imports needed.
 // ---------------------------------------------------------------------------
 
-export interface UserAttrs {
-  id?: string;
-}
+export type AppSubjectMap = SubjectMap<Resolvers, ResolversTypes>;
+export type AppSubjectName = SubjectName<Resolvers>;
 
-export interface NoteAttrs {
-  userId?: string;
-  orgId?: string | null;
-}
+// typed() helper bound to this app's subject map.
+export const typed = createTyped<AppSubjectMap>();
 
-export interface OrgAttrs {
-  id?: string;
-}
-
-export interface OrgMemberAttrs {
-  orgId?: string;
-  userId?: string;
-}
-
-type Action = 'create' | 'read' | 'update' | 'delete' | 'manage';
-
-type Subjects =
-  | (UserAttrs & ForcedSubject<'User'>)
-  | (NoteAttrs & ForcedSubject<'Note'>)
-  | (OrgAttrs & ForcedSubject<'Org'>)
-  | (OrgMemberAttrs & ForcedSubject<'OrgMember'>)
-  | 'User'
-  | 'Note'
-  | 'Org'
-  | 'OrgMember'
-  | 'all';
-
-export type AppAbility = MongoAbility<[Action, Subjects]>;
+export type { AppAbility, Action };
 
 // ---------------------------------------------------------------------------
 // defineAbilitiesFor
-//
-// Builds a per-request AppAbility from the caller's userId and memberships.
-// Rules use MongoDB-style conditions so CASL can check tagged subjects like:
-//   ability.can('update', subject('User', { id: targetId }))
 // ---------------------------------------------------------------------------
 
 export function defineAbilitiesFor(
@@ -63,7 +40,7 @@ export function defineAbilitiesFor(
 
   if (!userId) {
     cannot('manage', 'all');
-    return build();
+    return build(abilityOptions);
   }
 
   const memberOrgIds = memberships.map((m) => m.orgId);
@@ -79,14 +56,11 @@ export function defineAbilitiesFor(
 
   // ── Notes ──────────────────────────────────────────────────────────────
   can('read', 'Note');
-  // Personal note (no org)
   can('create', 'Note', { orgId: null });
-  // Org notes — only in orgs the caller is a member of
   if (memberOrgIds.length > 0) {
     can('create', 'Note', { orgId: { $in: memberOrgIds } });
     can('update', 'Note', { orgId: { $in: memberOrgIds } });
   }
-  // Own personal notes
   can('update', 'Note', { userId });
   cannot('delete', 'Note');
 
@@ -106,5 +80,5 @@ export function defineAbilitiesFor(
     can('delete', 'OrgMember', { orgId: { $in: ownerOrgIds } });
   }
 
-  return build();
+  return build(abilityOptions);
 }
