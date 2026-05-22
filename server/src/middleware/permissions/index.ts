@@ -51,17 +51,17 @@ export const permissions: PermissionsMap<Resolvers> = {
 
     // Notes
     // createNotes: array input — cannot check per-element orgId, auth only
-    createNotes: requireAuth,
+    createNotes: deny,
     // createNote: values.orgId optional → isOrgMember is a no-op when absent
     createNote: and(requireAuth, isOrgMember),
     // updateNotes/deleteNotes: where.orgId.eq available → isOrgMember enforces org access
     // TODO: also add isOwner for personal notes once implemented
     updateNotes: and(requireAuth, isOrgMember),
-    deleteNotes: and(requireAuth, isOrgMember),
+    deleteNotes: deny,
 
     // Orgs — createOrg is overridden by a custom resolver that adds the caller as owner
     // createOrgs: array input — auth only; no auto-owner added for bulk
-    createOrgs: requireAuth,
+    createOrgs: deny,
     createOrg: requireAuth,
     // updateOrgs/deleteOrgs: where.id.eq is the org's own id → isOrgOwnerById
     updateOrgs: and(requireAuth, isOrgOwnerById),

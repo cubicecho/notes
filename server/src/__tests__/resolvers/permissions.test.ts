@@ -177,7 +177,53 @@ describe('permissions', () => {
     });
   });
 
+  describe('orgs (bulk)', () => {
+    it('denies createOrgs', async () => {
+      const result = await execute({
+        schema: ctx.schema,
+        document: parse(
+          'mutation { createOrgs(values: [{ name: "Bulk" }]) { id } }',
+        ),
+        contextValue: ctx.makeContext(userId1),
+      });
+      expect(result.errors).toBeDefined();
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+    });
+  });
+
   describe('notes', () => {
+    it('denies createNotes (bulk)', async () => {
+      const result = await execute({
+        schema: ctx.schema,
+        document: parse(`mutation($userId: String!) {
+          createNotes(values: [{ userId: $userId, title: "Bulk" }]) { id }
+        }`),
+        variableValues: { userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
+      });
+      expect(result.errors).toBeDefined();
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+    });
+
+    it('denies deleteNotes', async () => {
+      const note = first(
+        await ctx.db
+          .insert(notes)
+          .values({ userId: userId1, title: 'Mine', content: '' })
+          .returning(),
+      );
+      const result = await execute({
+        schema: ctx.schema,
+        document: parse(`mutation($id: String!) {
+          deleteNotes(where: { id: { eq: $id } }) { id }
+        }`),
+        variableValues: { id: note.id },
+        contextValue: ctx.makeContext(userId1),
+      });
+      expect(result.errors).toBeDefined();
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
+    });
+
     it('denies updateNotes for org notes when caller is not a member', async () => {
       const org = first(
         await ctx.db.insert(orgs).values({ name: 'Org' }).returning(),
@@ -185,14 +231,12 @@ describe('permissions', () => {
       await ctx.db
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId2, role: 'owner' });
-      await ctx.db
-        .insert(notes)
-        .values({
-          userId: userId2,
-          orgId: org.id,
-          title: 'Secret',
-          content: '',
-        });
+      await ctx.db.insert(notes).values({
+        userId: userId2,
+        orgId: org.id,
+        title: 'Secret',
+        content: '',
+      });
 
       const result = await execute({
         schema: ctx.schema,
