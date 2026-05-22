@@ -14,11 +14,15 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "\n  query SettingsMyOrgs {\n    myOrgs {\n      id\n      name\n    }\n  }\n": typeof types.SettingsMyOrgsDocument,
+    "\n  mutation SettingsCreateOrg($name: String!) {\n    createOrg(values: { name: $name }) {\n      id\n      name\n    }\n  }\n": typeof types.SettingsCreateOrgDocument,
     "\n  query Me {\n    me {\n      id\n      email\n    }\n  }\n": typeof types.MeDocument,
     "\n  mutation RequestMagicLink($email: String!) {\n    requestMagicLink(email: $email) {\n      success\n      devLink\n    }\n  }\n": typeof types.RequestMagicLinkDocument,
     "\n  mutation VerifyMagicLink($token: String!) {\n    verifyMagicLink(token: $token) {\n      token\n      user {\n        id\n        email\n      }\n    }\n  }\n": typeof types.VerifyMagicLinkDocument,
 };
 const documents: Documents = {
+    "\n  query SettingsMyOrgs {\n    myOrgs {\n      id\n      name\n    }\n  }\n": types.SettingsMyOrgsDocument,
+    "\n  mutation SettingsCreateOrg($name: String!) {\n    createOrg(values: { name: $name }) {\n      id\n      name\n    }\n  }\n": types.SettingsCreateOrgDocument,
     "\n  query Me {\n    me {\n      id\n      email\n    }\n  }\n": types.MeDocument,
     "\n  mutation RequestMagicLink($email: String!) {\n    requestMagicLink(email: $email) {\n      success\n      devLink\n    }\n  }\n": types.RequestMagicLinkDocument,
     "\n  mutation VerifyMagicLink($token: String!) {\n    verifyMagicLink(token: $token) {\n      token\n      user {\n        id\n        email\n      }\n    }\n  }\n": types.VerifyMagicLinkDocument,
@@ -38,6 +42,14 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query SettingsMyOrgs {\n    myOrgs {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  query SettingsMyOrgs {\n    myOrgs {\n      id\n      name\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SettingsCreateOrg($name: String!) {\n    createOrg(values: { name: $name }) {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  mutation SettingsCreateOrg($name: String!) {\n    createOrg(values: { name: $name }) {\n      id\n      name\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
