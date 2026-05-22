@@ -1,30 +1,44 @@
 import type { GraphQLResolveInfo } from 'graphql';
-import type { IMiddlewareFunction } from 'graphql-middleware';
+import type {
+  IMiddlewareFunction,
+  IMiddlewareTypeMap,
+} from 'graphql-middleware';
 import type { Context } from '../../context.ts';
 
-// A Rule checks a condition and throws on failure. It does not call resolve.
+// Resolve is the next-resolver function passed to middleware by graphql-middleware.
+type Resolve = (
+  parent?: unknown,
+  args?: unknown,
+  context?: unknown,
+  info?: GraphQLResolveInfo,
+) => Promise<unknown>;
+
+// Middleware is the full graphql-middleware function type (callable or options object).
+export type Middleware = IMiddlewareFunction<unknown, Context>;
+
+// Rule is the callable middleware form — checks a condition (throwing on failure)
+// then calls resolve. Since Rule is structurally a Middleware, rules can be used
+// naked in a PermissionsMap or composed with and()/or().
 export type Rule = (
+  resolve: Resolve,
   parent: unknown,
-  args: Record<string, unknown>,
+  args: unknown,
   context: Context,
   info: GraphQLResolveInfo,
-) => void | Promise<void>;
-
-// A Middleware wraps a resolver and calls resolve on success.
-export type Middleware = IMiddlewareFunction<unknown, Context>;
+) => Promise<unknown> | unknown;
 
 /**
  * A permissions map derived from the generated resolver types.
+ * Extends IMiddlewareTypeMap so it is directly assignable to applyMiddleware.
  * Each type key (Query, Mutation, …) is optional and maps to either:
- *   - a single Rule | Middleware applied to every field in that type, or
- *   - an object where each field key is an optional Rule | Middleware.
+ *   - a single Rule applied to every field in that type, or
+ *   - an object where each field key is an optional Rule.
  */
-export type PermissionsMap<T> = {
+export type PermissionsMap<T> = IMiddlewareTypeMap & {
   [TypeName in keyof T]?:
     | Rule
-    | Middleware
     | {
-        [FieldName in keyof NonNullable<T[TypeName]>]?: Rule | Middleware;
+        [FieldName in keyof NonNullable<T[TypeName]>]?: Rule;
       };
 };
 
@@ -56,23 +70,37 @@ export function getArgValue(
   return undefined;
 }
 
+// Always allows the operation through.
+export const accept: Rule = (resolve, parent, args, context, info) =>
+  resolve(parent, args, context, info);
+
+// Always rejects the operation.
+export const deny: Rule = () => {
+  throw new Error('Forbidden');
+};
+
+const noop: Resolve = async () => undefined;
+
+// Runs all rules sequentially, passing a noop resolve to intercept their
+// resolve calls, then calls the real resolve once at the end.
 export const and =
-  (...rules: Rule[]): Middleware =>
+  (...rules: Rule[]): Rule =>
   async (resolve, parent, args, context, info) => {
     for (const rule of rules) {
-      await rule(parent, args as Record<string, unknown>, context, info);
+      await rule(noop, parent, args, context, info);
     }
     return resolve(parent, args, context, info);
   };
 
+// Tries each rule in order; calls the real resolve on the first that passes.
 export const or =
   (...rules: Rule[]): Rule =>
-  async (parent, args, context, info) => {
+  async (resolve, parent, args, context, info) => {
     let lastError: unknown;
     for (const rule of rules) {
       try {
-        await rule(parent, args, context, info);
-        return;
+        await rule(noop, parent, args, context, info);
+        return resolve(parent, args, context, info);
       } catch (e) {
         lastError = e;
       }

@@ -6,61 +6,72 @@
  *
  * Usage:
  *   myNotes: and(requireAuth, or(isOwner, isOrgMember))
+ *   myOrgs:  requireAuth   ← rules can also be used naked
  */
 
 import type { Resolvers } from '../../__generated__/resolvers.ts';
-import type { Context } from '../../context.ts';
 import {
-  type PermissionsMap,
-  type Rule,
-  and,
-  getArgValue,
-  or,
-} from './utils.ts';
+  isOrgMember,
+  isOrgOwner,
+  isOrgOwnerById,
+  isOwner,
+  requireAuth,
+} from './rules.ts';
+import { type PermissionsMap, and, deny } from './utils.ts';
 
-export const requireAuth: Rule = async (_parent, _args, context: Context) => {
-  if (!context.userId) {
-    throw new Error('Not authenticated');
-  }
-};
-
-// TODO: check that context.userId owns the resource being accessed
-export const isOwner: Rule = async () => {};
-
-// Checks that context.userId is a member (any role) of the orgId in args.
-// No-op when orgId is absent (allows optional-orgId mutations like createNote).
-export const isOrgMember: Rule = async (_parent, args, context) => {
-  const orgId = getArgValue(args, 'orgId');
-  if (!orgId) {
-    return;
-  }
-  const memberships = await context.getUserMemberships();
-  if (!memberships.some((m) => m.orgId === orgId)) {
-    throw new Error('Forbidden');
-  }
-};
-
-// Checks that context.userId is an owner-role member of the orgId in args.
-export const isOrgOwner: Rule = async (_parent, args, context) => {
-  const orgId = getArgValue(args, 'orgId');
-  if (!orgId) {
-    throw new Error('Forbidden');
-  }
-  const memberships = await context.getUserMemberships();
-  if (!memberships.some((m) => m.orgId === orgId && m.role === 'owner')) {
-    throw new Error('Forbidden');
-  }
-};
+export {
+  requireAuth,
+  isOwner,
+  isOrgMember,
+  isOrgOwner,
+  isOrgOwnerById,
+} from './rules.ts';
 
 export const permissions: PermissionsMap<Resolvers> = {
   Query: {
-    myNotes: and(requireAuth, or(isOwner, isOrgMember)),
-    myOrgs: and(requireAuth),
+    // TODO: scope these to the caller's own data once isOwner is implemented
+    user: requireAuth,
+    userSingle: requireAuth,
+    note: requireAuth,
+    noteSingle: requireAuth,
+    org: requireAuth,
+    orgSingle: requireAuth,
+    orgMember: requireAuth,
+    orgMemberSingle: requireAuth,
+    // Custom
+    myNotes: requireAuth,
+    myOrgs: requireAuth,
   },
   Mutation: {
-    createOrg: and(requireAuth),
+    // Users — created internally only (e.g. during auth flow)
+    createUsers: deny,
+    createUser: deny,
+    updateUsers: and(requireAuth, isOwner),
+    deleteUsers: deny,
+
+    // Notes
+    // createNotes: array input — cannot check per-element orgId, auth only
+    createNotes: requireAuth,
+    // createNote: values.orgId optional → isOrgMember is a no-op when absent
     createNote: and(requireAuth, isOrgMember),
+    // updateNotes/deleteNotes: where.orgId.eq available → isOrgMember enforces org access
+    // TODO: also add isOwner for personal notes once implemented
+    updateNotes: and(requireAuth, isOrgMember),
+    deleteNotes: and(requireAuth, isOrgMember),
+
+    // Orgs — createOrg is overridden by a custom resolver that adds the caller as owner
+    // createOrgs: array input — auth only; no auto-owner added for bulk
+    createOrgs: requireAuth,
+    createOrg: requireAuth,
+    // updateOrgs/deleteOrgs: where.id.eq is the org's own id → isOrgOwnerById
+    updateOrgs: and(requireAuth, isOrgOwnerById),
+    deleteOrgs: and(requireAuth, isOrgOwnerById),
+
+    // OrgMembers
+    // createOrgMembers: array input — cannot check per-element orgId; deny until safe
+    createOrgMembers: deny,
     createOrgMember: and(requireAuth, isOrgOwner),
+    updateOrgMembers: and(requireAuth, isOrgOwner),
     deleteOrgMembers: and(requireAuth, isOrgOwner),
   },
 };
