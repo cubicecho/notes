@@ -1,105 +1,186 @@
-import { storage } from '@/lib/storage';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useReducer,
-} from 'react';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { createContext, useCallback, useContext } from 'react';
+import { graphql } from '../__generated__/index.js';
+import { useWorkspace } from './WorkspaceContext';
 
-const STORAGE_KEY = 'cubicecho_notes';
+// ---------------------------------------------------------------------------
+// GraphQL operations
+// ---------------------------------------------------------------------------
+
+export const MY_NOTES = graphql(`
+  query MyNotes {
+    myNotes {
+      id
+      title
+      content
+      userId
+      orgId
+      updatedAt
+      createdAt
+    }
+  }
+`);
+
+const ORG_NOTES = graphql(`
+  query OrgNotes($orgId: String!) {
+    note(where: { orgId: { eq: $orgId } }) {
+      id
+      title
+      content
+      userId
+      orgId
+      updatedAt
+      createdAt
+    }
+  }
+`);
+
+const CREATE_NOTE = graphql(`
+  mutation CreateNote($userId: String!, $orgId: String) {
+    createNote(values: { userId: $userId, orgId: $orgId, title: "Untitled", content: "" }) {
+      id
+      title
+      content
+      userId
+      orgId
+      updatedAt
+      createdAt
+    }
+  }
+`);
+
+const UPDATE_NOTE = graphql(`
+  mutation UpdateNote($id: String!, $title: String, $content: String) {
+    updateNotes(
+      set: { title: $title, content: $content }
+      where: { id: { eq: $id } }
+    ) {
+      id
+      title
+      content
+      updatedAt
+    }
+  }
+`);
+
+const DELETE_NOTE = graphql(`
+  mutation DeleteNote($id: String!) {
+    deleteNotes(where: { id: { eq: $id } }) {
+      id
+    }
+  }
+`);
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface Note {
   id: string;
   title: string;
   content: string;
+  userId: string;
+  orgId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-type Action =
-  | { type: 'LOAD'; notes: Note[] }
-  | { type: 'CREATE'; note: Note }
-  | {
-      type: 'UPDATE';
-      id: string;
-      patch: Partial<Pick<Note, 'title' | 'content'>>;
-    }
-  | { type: 'DELETE'; id: string };
-
-function reducer(state: Note[], action: Action): Note[] {
-  switch (action.type) {
-    case 'LOAD':
-      return action.notes;
-    case 'CREATE':
-      return [action.note, ...state];
-    case 'UPDATE':
-      return state.map((n) =>
-        n.id === action.id
-          ? { ...n, ...action.patch, updatedAt: new Date().toISOString() }
-          : n,
-      );
-    case 'DELETE':
-      return state.filter((n) => n.id !== action.id);
-  }
-}
-
 interface NotesContextValue {
   notes: Note[];
-  createNote: () => Note;
+  loading: boolean;
+  createNote: (userId: string) => Promise<Note>;
   updateNote: (
     id: string,
     patch: Partial<Pick<Note, 'title' | 'content'>>,
-  ) => void;
-  deleteNote: (id: string) => void;
+  ) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
+  refetch: () => void;
 }
 
 const NotesContext = createContext<NotesContextValue | null>(null);
 
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
 export function NotesProvider({ children }: { children: React.ReactNode }) {
-  const [notes, dispatch] = useReducer(reducer, []);
+  const { workspace } = useWorkspace();
 
-  useEffect(() => {
-    const raw = storage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        dispatch({ type: 'LOAD', notes: JSON.parse(raw) as Note[] });
-      } catch {
-        // corrupt data — start fresh
-      }
-    }
-  }, []);
+  const isOrg = workspace.type === 'org';
 
-  useEffect(() => {
-    storage.setItem(STORAGE_KEY, JSON.stringify(notes));
-  }, [notes]);
+  const personalQuery = useQuery(MY_NOTES, {
+    skip: isOrg,
+    fetchPolicy: 'cache-and-network',
+  });
 
-  const createNote = useCallback((): Note => {
-    const note: Note = {
-      id: crypto.randomUUID(),
-      title: 'Untitled',
-      content: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    dispatch({ type: 'CREATE', note });
-    return note;
-  }, []);
+  const orgQuery = useQuery(ORG_NOTES, {
+    skip: !isOrg,
+    variables: { orgId: isOrg ? workspace.id : '' },
+    fetchPolicy: 'cache-and-network',
+  });
 
-  const updateNote = useCallback(
-    (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => {
-      dispatch({ type: 'UPDATE', id, patch });
+  const [createNoteMut] = useMutation(CREATE_NOTE);
+  const [updateNoteMut] = useMutation(UPDATE_NOTE);
+  const [deleteNoteMut] = useMutation(DELETE_NOTE);
+
+  const rawNotes = isOrg ? orgQuery.data?.note : personalQuery.data?.myNotes;
+  const loading = isOrg ? orgQuery.loading : personalQuery.loading;
+
+  const notes: Note[] = (rawNotes ?? []).map((n) => ({
+    id: n.id,
+    title: n.title ?? 'Untitled',
+    content: n.content ?? '',
+    userId: n.userId,
+    orgId: n.orgId ?? null,
+    createdAt: n.createdAt as string,
+    updatedAt: n.updatedAt as string,
+  }));
+
+  const refetch = useCallback(() => {
+    if (isOrg) orgQuery.refetch();
+    else personalQuery.refetch();
+  }, [isOrg, orgQuery, personalQuery]);
+
+  const createNote = useCallback(
+    async (userId: string): Promise<Note> => {
+      const orgId = isOrg ? workspace.id : undefined;
+      const { data } = await createNoteMut({
+        variables: { userId, orgId: orgId ?? null },
+      });
+      const n = data?.createNote;
+      if (!n) throw new Error('Create note failed');
+      refetch();
+      return {
+        id: n.id,
+        title: n.title ?? 'Untitled',
+        content: n.content ?? '',
+        userId: n.userId,
+        orgId: n.orgId ?? null,
+        createdAt: n.createdAt as string,
+        updatedAt: n.updatedAt as string,
+      };
     },
-    [],
+    [isOrg, workspace, createNoteMut, refetch],
   );
 
-  const deleteNote = useCallback((id: string) => {
-    dispatch({ type: 'DELETE', id });
-  }, []);
+  const updateNote = useCallback(
+    async (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => {
+      await updateNoteMut({ variables: { id, ...patch } });
+    },
+    [updateNoteMut],
+  );
+
+  const deleteNote = useCallback(
+    async (id: string) => {
+      await deleteNoteMut({ variables: { id } });
+      refetch();
+    },
+    [deleteNoteMut, refetch],
+  );
 
   return (
     <NotesContext.Provider
-      value={{ notes, createNote, updateNote, deleteNote }}
+      value={{ notes, loading, createNote, updateNote, deleteNote, refetch }}
     >
       {children}
     </NotesContext.Provider>
