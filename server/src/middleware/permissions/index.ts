@@ -25,8 +25,7 @@ import type {
 } from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
 import { Actions, Subject, defineAbilitiesFor, typed } from './abilities.ts';
-import { type PermissionsMap, deny } from './utils.ts';
-import { createCan } from './utils.ts';
+import { type PermissionsMap, accept, createCan, deny } from './utils.ts';
 
 const { create, read, update, delete: del } = Actions;
 const { User, Note, Org, OrgMember } = Subject;
@@ -57,8 +56,12 @@ export const permissions: PermissionsMap<Resolvers> = {
     orgMemberSingle: canUser(read, OrgMember),
     myNotes: canUser(read, Note),
     myOrgs: canUser(read, Org),
+    me: canUser(read, User),
   },
   Mutation: {
+    // Auth — public, no token required
+    requestMagicLink: accept,
+    verifyMagicLink: accept,
     // Users
     createUsers: deny,
     createUser: deny,

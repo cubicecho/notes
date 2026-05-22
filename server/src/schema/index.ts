@@ -9,6 +9,7 @@ import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
 import { applyMiddleware } from 'graphql-middleware';
 import { permissions } from '../middleware/permissions/index.ts';
+import { authResolvers } from './resolvers/auth.ts';
 import { noteResolvers } from './resolvers/notes.ts';
 import { orgResolvers } from './resolvers/orgs.ts';
 
@@ -32,7 +33,7 @@ export function buildAppSchema(db: DB): GraphQLSchema {
 
   const withResolvers = addResolversToSchema({
     schema: extended,
-    resolvers: mergeResolvers([noteResolvers, orgResolvers]),
+    resolvers: mergeResolvers([authResolvers, noteResolvers, orgResolvers]),
   });
 
   return applyMiddleware(withResolvers, permissions);

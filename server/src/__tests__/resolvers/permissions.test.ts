@@ -232,14 +232,12 @@ describe('permissions', () => {
       await ctx.db
         .insert(orgMembers)
         .values({ orgId: org.id, userId: userId2, role: 'owner' });
-      await ctx.db
-        .insert(notes)
-        .values({
-          userId: userId2,
-          orgId: org.id,
-          title: 'Secret',
-          content: '',
-        });
+      await ctx.db.insert(notes).values({
+        userId: userId2,
+        orgId: org.id,
+        title: 'Secret',
+        content: '',
+      });
 
       const result = await graphql({
         schema: ctx.schema,

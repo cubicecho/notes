@@ -16,11 +16,17 @@ import {
 
 // ---------------------------------------------------------------------------
 // App-specific bindings — fully derived from the generated schema types.
-// No manual model-type imports needed.
+// Non-entity response types (auth payloads etc.) are excluded from the
+// subject map since they are not domain objects with CASL permissions.
 // ---------------------------------------------------------------------------
 
-export type AppSubjectMap = SubjectMap<Resolvers, ResolversTypes>;
-export type AppSubjectName = SubjectName<Resolvers>;
+type NonEntityTypes = 'AuthPayload' | 'RequestMagicLinkResult';
+
+export type AppSubjectMap = Omit<
+  SubjectMap<Resolvers, ResolversTypes>,
+  NonEntityTypes
+>;
+export type AppSubjectName = Exclude<SubjectName<Resolvers>, NonEntityTypes>;
 
 // typed() helper bound to this app's subject map.
 export const typed = createTyped<AppSubjectMap>();

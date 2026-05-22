@@ -4,4 +4,32 @@ extend type Query {
 
   """Orgs the authenticated user is a member of."""
   myOrgs: [Org!]!
+
+  """Returns the currently authenticated user."""
+  me: User
+}
+
+extend type Mutation {
+  """
+  Request a magic link to be sent to the given email.
+  In development the link is returned directly; in production it is logged
+  (TODO: send via email provider).
+  """
+  requestMagicLink(email: String!): RequestMagicLinkResult!
+
+  """Verify a magic-link token and return a session token."""
+  verifyMagicLink(token: String!): AuthPayload!
+}
+
+type RequestMagicLinkResult {
+  """Always true on success."""
+  success: Boolean!
+  """In development only: the full magic-link URL so the client can bypass email."""
+  devLink: String
+}
+
+type AuthPayload {
+  """Opaque session token — send as Bearer in Authorization header."""
+  token: String!
+  user: User!
 }

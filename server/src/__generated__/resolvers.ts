@@ -14,6 +14,13 @@ export type Scalars = {
   DateTime: { input: unknown; output: unknown; }
 };
 
+export type AuthPayload = {
+  __typename?: 'AuthPayload';
+  /** Opaque session token — send as Bearer in Authorization header. */
+  token: Scalars['String']['output'];
+  user: User;
+};
+
 export type CreateNoteInput = {
   content?: InputMaybe<Scalars['String']['input']>;
   /** DateTime */
@@ -154,10 +161,18 @@ export type Mutation = {
   deleteOrgMembers: Array<OrgMember>;
   deleteOrgs: Array<Org>;
   deleteUsers: Array<User>;
+  /**
+   * Request a magic link to be sent to the given email.
+   * In development the link is returned directly; in production it is logged
+   * (TODO: send via email provider).
+   */
+  requestMagicLink: RequestMagicLinkResult;
   updateNotes: Array<Note>;
   updateOrgMembers: Array<OrgMember>;
   updateOrgs: Array<Org>;
   updateUsers: Array<User>;
+  /** Verify a magic-link token and return a session token. */
+  verifyMagicLink: AuthPayload;
 };
 
 
@@ -221,6 +236,11 @@ export type MutationDeleteUsersArgs = {
 };
 
 
+export type MutationRequestMagicLinkArgs = {
+  email: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateNotesArgs = {
   set: UpdateNoteInput;
   where?: InputMaybe<NoteFilters>;
@@ -242,6 +262,11 @@ export type MutationUpdateOrgsArgs = {
 export type MutationUpdateUsersArgs = {
   set: UpdateUserInput;
   where?: InputMaybe<UserFilters>;
+};
+
+
+export type MutationVerifyMagicLinkArgs = {
+  token: Scalars['String']['input'];
 };
 
 export type Note = {
@@ -447,6 +472,8 @@ export type OrgOrderBy = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Returns the currently authenticated user. */
+  me?: Maybe<User>;
   /** Personal notes owned by the authenticated user (excludes org notes). */
   myNotes: Array<Note>;
   /** Orgs the authenticated user is a member of. */
@@ -519,6 +546,14 @@ export type QueryUserSingleArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<UserOrderBy>;
   where?: InputMaybe<UserFilters>;
+};
+
+export type RequestMagicLinkResult = {
+  __typename?: 'RequestMagicLinkResult';
+  /** In development only: the full magic-link URL so the client can bypass email. */
+  devLink?: Maybe<Scalars['String']['output']>;
+  /** Always true on success. */
+  success: Scalars['Boolean']['output'];
 };
 
 export type StringFilter = {
@@ -721,6 +756,7 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
+  AuthPayload: ResolverTypeWrapper<AuthPayload>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   CreateNoteInput: CreateNoteInput;
   CreateOrgInput: CreateOrgInput;
@@ -751,6 +787,7 @@ export type ResolversTypes = {
   OrgMembersRoleEnumFilterOr: OrgMembersRoleEnumFilterOr;
   OrgOrderBy: OrgOrderBy;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  RequestMagicLinkResult: ResolverTypeWrapper<RequestMagicLinkResult>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   StringFilter: StringFilter;
   StringFilterOr: StringFilterOr;
@@ -766,6 +803,7 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  AuthPayload: AuthPayload;
   Boolean: Scalars['Boolean']['output'];
   CreateNoteInput: CreateNoteInput;
   CreateOrgInput: CreateOrgInput;
@@ -794,6 +832,7 @@ export type ResolversParentTypes = {
   OrgMembersRoleEnumFilterOr: OrgMembersRoleEnumFilterOr;
   OrgOrderBy: OrgOrderBy;
   Query: Record<PropertyKey, never>;
+  RequestMagicLinkResult: RequestMagicLinkResult;
   String: Scalars['String']['output'];
   StringFilter: StringFilter;
   StringFilterOr: StringFilterOr;
@@ -805,6 +844,11 @@ export type ResolversParentTypes = {
   UserFilters: UserFilters;
   UserFiltersOr: UserFiltersOr;
   UserOrderBy: UserOrderBy;
+};
+
+export type AuthPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AuthPayload'] = ResolversParentTypes['AuthPayload']> = {
+  token?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  user?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
 };
 
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
@@ -824,10 +868,12 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   deleteOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<MutationDeleteOrgMembersArgs>>;
   deleteOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, Partial<MutationDeleteOrgsArgs>>;
   deleteUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, Partial<MutationDeleteUsersArgs>>;
+  requestMagicLink?: Resolver<ResolversTypes['RequestMagicLinkResult'], ParentType, ContextType, RequireFields<MutationRequestMagicLinkArgs, 'email'>>;
   updateNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationUpdateNotesArgs, 'set'>>;
   updateOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationUpdateOrgMembersArgs, 'set'>>;
   updateOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationUpdateOrgsArgs, 'set'>>;
   updateUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationUpdateUsersArgs, 'set'>>;
+  verifyMagicLink?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationVerifyMagicLinkArgs, 'token'>>;
 };
 
 export type NoteResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Note'] = ResolversParentTypes['Note']> = {
@@ -861,6 +907,7 @@ export type OrgMemberResolvers<ContextType = Context, ParentType extends Resolve
 };
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  me?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   myNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType>;
   myOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType>;
   note?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<QueryNoteArgs>>;
@@ -873,6 +920,11 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   userSingle?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, Partial<QueryUserSingleArgs>>;
 };
 
+export type RequestMagicLinkResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RequestMagicLinkResult'] = ResolversParentTypes['RequestMagicLinkResult']> = {
+  devLink?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -883,12 +935,14 @@ export type UserResolvers<ContextType = Context, ParentType extends ResolversPar
 };
 
 export type Resolvers<ContextType = Context> = {
+  AuthPayload?: AuthPayloadResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   Mutation?: MutationResolvers<ContextType>;
   Note?: NoteResolvers<ContextType>;
   Org?: OrgResolvers<ContextType>;
   OrgMember?: OrgMemberResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
+  RequestMagicLinkResult?: RequestMagicLinkResultResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
 };
 
