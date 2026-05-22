@@ -34,7 +34,25 @@ app.use(
     context: async ({ req }) => {
       const token = req.headers.authorization?.replace('Bearer ', '');
       const userId = token ?? DEMO_USER_ID;
-      return { db, userId };
+      let membershipsPromise:
+        | Promise<{ orgId: string; role: 'owner' | 'member' }[]>
+        | undefined;
+
+      return {
+        db,
+        userId,
+        getUserMemberships: () => {
+          if (membershipsPromise === undefined) {
+            membershipsPromise = db.query.orgMembers
+              .findMany({ where: { userId } })
+              .then((ms: { orgId: string; role: 'owner' | 'member' }[]) =>
+                ms.map((m) => ({ orgId: m.orgId, role: m.role })),
+              );
+          }
+          // biome-ignore lint/style/noNonNullAssertion: assigned in the branch above
+          return membershipsPromise!;
+        },
+      };
     },
   }),
 );

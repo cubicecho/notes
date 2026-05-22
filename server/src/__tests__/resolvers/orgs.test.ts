@@ -29,8 +29,10 @@ describe('orgs resolvers', () => {
     it('creates an org and adds caller as owner', async () => {
       const result = await execute({
         schema: ctx.schema,
-        document: parse(`mutation { createOrg(name: "ACME") { id name } }`),
-        contextValue: { db: ctx.db, userId: userId1 },
+        document: parse(
+          'mutation { createOrg(values: { name: "ACME" }) { id name } }',
+        ),
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
@@ -46,8 +48,8 @@ describe('orgs resolvers', () => {
     it('returns error when not authenticated', async () => {
       const result = await execute({
         schema: ctx.schema,
-        document: parse(`mutation { createOrg(name: "X") { id } }`),
-        contextValue: { db: ctx.db, userId: undefined },
+        document: parse('mutation { createOrg(values: { name: "X" }) { id } }'),
+        contextValue: ctx.makeContext(),
       });
 
       expect(result.errors).toBeDefined();
@@ -74,7 +76,7 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse('query { myOrgs { id name } }'),
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
@@ -87,7 +89,7 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse('query { myOrgs { id } }'),
-        contextValue: { db: ctx.db, userId: undefined },
+        contextValue: ctx.makeContext(),
       });
 
       expect(result.errors).toBeDefined();
@@ -95,7 +97,7 @@ describe('orgs resolvers', () => {
     });
   });
 
-  describe('addOrgMember', () => {
+  describe('createOrgMember', () => {
     it('adds a member when caller is the org owner', async () => {
       const org = first(
         await ctx.db.insert(orgs).values({ name: 'Team' }).returning(),
@@ -107,14 +109,14 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse(`mutation($orgId: String!, $userId: String!) {
-          addOrgMember(orgId: $orgId, userId: $userId) { orgId userId role }
+          createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId userId role }
         }`),
         variableValues: { orgId: org.id, userId: userId2 },
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
-      const membership = result.data?.addOrgMember as {
+      const membership = result.data?.createOrgMember as {
         orgId: string;
         userId: string;
         role: string;
@@ -134,14 +136,14 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse(`mutation($orgId: String!, $userId: String!) {
-          addOrgMember(orgId: $orgId, userId: $userId) { orgId }
+          createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId }
         }`),
         variableValues: { orgId: org.id, userId: userId2 },
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Only org owners/);
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
     });
 
     it('rejects when caller is not a member at all', async () => {
@@ -155,18 +157,18 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse(`mutation($orgId: String!, $userId: String!) {
-          addOrgMember(orgId: $orgId, userId: $userId) { orgId }
+          createOrgMember(values: { orgId: $orgId, userId: $userId, role: member }) { orgId }
         }`),
         variableValues: { orgId: org.id, userId: userId2 },
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not a member/);
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
     });
   });
 
-  describe('removeOrgMember', () => {
+  describe('deleteOrgMembers', () => {
     it('removes a member when caller is the org owner', async () => {
       const org = first(
         await ctx.db.insert(orgs).values({ name: 'Squad' }).returning(),
@@ -179,15 +181,17 @@ describe('orgs resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse(`mutation($orgId: String!, $userId: String!) {
-          removeOrgMember(orgId: $orgId, userId: $userId) { orgId userId }
+          deleteOrgMembers(where: { orgId: { eq: $orgId }, userId: { eq: $userId } }) { orgId userId }
         }`),
         variableValues: { orgId: org.id, userId: userId2 },
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
-      const removed = result.data?.removeOrgMember as { userId: string };
-      expect(removed.userId).toBe(userId2);
+      const removed = result.data?.deleteOrgMembers as Array<{
+        userId: string;
+      }>;
+      expect(first(removed).userId).toBe(userId2);
 
       const stillMember = await ctx.db.query.orgMembers.findFirst({
         where: { orgId: org.id, userId: userId2 },
@@ -195,25 +199,25 @@ describe('orgs resolvers', () => {
       expect(stillMember).toBeUndefined();
     });
 
-    it('rejects removal of a non-member', async () => {
+    it('rejects when caller is not an owner', async () => {
       const org = first(
         await ctx.db.insert(orgs).values({ name: 'Squad' }).returning(),
       );
       await ctx.db
         .insert(orgMembers)
-        .values({ orgId: org.id, userId: userId1, role: 'owner' });
+        .values({ orgId: org.id, userId: userId1, role: 'member' });
 
       const result = await execute({
         schema: ctx.schema,
         document: parse(`mutation($orgId: String!, $userId: String!) {
-          removeOrgMember(orgId: $orgId, userId: $userId) { orgId }
+          deleteOrgMembers(where: { orgId: { eq: $orgId }, userId: { eq: $userId } }) { orgId }
         }`),
         variableValues: { orgId: org.id, userId: userId2 },
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/not a member/i);
+      expect(first(result.errors ?? []).message).toMatch(/Forbidden/);
     });
   });
 });

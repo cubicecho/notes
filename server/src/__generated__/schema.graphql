@@ -1,4 +1,4 @@
-input InsertIntoUserInput {
+input CreateUserInput {
   id: String
   email: String!
 
@@ -206,7 +206,7 @@ enum OrderDirection {
   desc
 }
 
-input InsertIntoNoteInput {
+input CreateNoteInput {
   id: String
   userId: String!
   orgId: String
@@ -265,7 +265,7 @@ input NoteOrderBy {
   updatedAt: InnerOrder
 }
 
-input InsertIntoOrgInput {
+input CreateOrgInput {
   id: String
   name: String!
 
@@ -309,7 +309,7 @@ input OrgOrderBy {
   updatedAt: InnerOrder
 }
 
-input InsertIntoOrgMemberInput {
+input CreateOrgMemberInput {
   orgId: String!
   userId: String!
   role: OrgMembersRoleEnum
@@ -463,7 +463,7 @@ type Query {
   orgMember(offset: Int, limit: Int, orderBy: OrgMemberOrderBy, where: OrgMemberFilters): [OrgMember!]!
   orgMemberSingle(offset: Int, orderBy: OrgMemberOrderBy, where: OrgMemberFilters): OrgMember
 
-  """Notes owned by the authenticated user, plus notes in all their orgs."""
+  """Personal notes owned by the authenticated user (excludes org notes)."""
   myNotes: [Note!]!
 
   """Orgs the authenticated user is a member of."""
@@ -471,38 +471,20 @@ type Query {
 }
 
 type Mutation {
-  insertIntoUsers(values: [InsertIntoUserInput!]!): [User!]!
-  insertIntoUser(values: InsertIntoUserInput!): User
+  createUsers(values: [CreateUserInput!]!): [User!]!
+  createUser(values: CreateUserInput!): User
   updateUsers(set: UpdateUserInput!, where: UserFilters): [User!]!
-  deleteFromUsers(where: UserFilters): [User!]!
-  insertIntoNotes(values: [InsertIntoNoteInput!]!): [Note!]!
-  insertIntoNote(values: InsertIntoNoteInput!): Note
+  deleteUsers(where: UserFilters): [User!]!
+  createNotes(values: [CreateNoteInput!]!): [Note!]!
+  createNote(values: CreateNoteInput!): Note
   updateNotes(set: UpdateNoteInput!, where: NoteFilters): [Note!]!
-  deleteFromNotes(where: NoteFilters): [Note!]!
-  insertIntoOrgs(values: [InsertIntoOrgInput!]!): [Org!]!
-  insertIntoOrg(values: InsertIntoOrgInput!): Org
+  deleteNotes(where: NoteFilters): [Note!]!
+  createOrgs(values: [CreateOrgInput!]!): [Org!]!
+  createOrg(values: CreateOrgInput!): Org
   updateOrgs(set: UpdateOrgInput!, where: OrgFilters): [Org!]!
-  deleteFromOrgs(where: OrgFilters): [Org!]!
-  insertIntoOrgMembers(values: [InsertIntoOrgMemberInput!]!): [OrgMember!]!
-  insertIntoOrgMember(values: InsertIntoOrgMemberInput!): OrgMember
+  deleteOrgs(where: OrgFilters): [Org!]!
+  createOrgMembers(values: [CreateOrgMemberInput!]!): [OrgMember!]!
+  createOrgMember(values: CreateOrgMemberInput!): OrgMember
   updateOrgMembers(set: UpdateOrgMemberInput!, where: OrgMemberFilters): [OrgMember!]!
-  deleteFromOrgMembers(where: OrgMemberFilters): [OrgMember!]!
-
-  """Create a new org and add the caller as owner."""
-  createOrg(name: String!): Org!
-
-  """
-  Add a user to an org. Caller must be an owner of the org.
-  Defaults to role 'member' if not specified.
-  """
-  addOrgMember(orgId: String!, userId: String!, role: OrgMembersRoleEnum): OrgMember!
-
-  """Remove a user from an org. Caller must be an owner of the org."""
-  removeOrgMember(orgId: String!, userId: String!): OrgMember!
-
-  """
-  Create a note. If orgId is supplied the note belongs to the org (caller
-  must be a member); otherwise it is a personal note.
-  """
-  createNote(title: String, content: String, orgId: String): Note!
+  deleteOrgMembers(where: OrgMemberFilters): [OrgMember!]!
 }

@@ -87,12 +87,29 @@ notes/
 
 ## Key Conventions
 
+**Always use curly braces for conditionals — no single-line if bodies:**
+```typescript
+// bad
+if (!user) throw new Error('Not found');
+
+// good
+if (!user) {
+  throw new Error('Not found');
+}
+```
+
 **Guard clause order (server resolvers) — auth → existence → ownership:**
 ```typescript
-if (!context.userId) throw new Error('Not authenticated');
+if (!context.userId) {
+  throw new Error('Not authenticated');
+}
 const note = await context.db.query.notes.findFirst({ where: { id: args.id } });
-if (!note) throw new Error(`Note ${args.id} not found`);
-if (note.userId !== context.userId) throw new Error('Forbidden');
+if (!note) {
+  throw new Error(`Note ${args.id} not found`);
+}
+if (note.userId !== context.userId) {
+  throw new Error('Forbidden');
+}
 ```
 
 **Type inference — never duplicate:**

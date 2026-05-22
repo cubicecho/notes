@@ -7,8 +7,8 @@ import { addResolversToSchema } from '@graphql-tools/schema';
 import { buildSchema } from '@vantreeseba/drizzle-graphql';
 import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
-import { applyMiddleware } from 'graphql-middleware';
-import { permissions } from '../middleware/permissions.ts';
+import { type IMiddleware, applyMiddleware } from 'graphql-middleware';
+import { permissions } from '../middleware/permissions/index.ts';
 import { noteResolvers } from './resolvers/notes.ts';
 import { orgResolvers } from './resolvers/orgs.ts';
 
@@ -19,7 +19,14 @@ const extensionSDL = fs.readFileSync(
 );
 
 export function buildAppSchema(db: DB): GraphQLSchema {
-  const { schema: drizzleSchema } = buildSchema(db, { singularTypes: true });
+  const { schema: drizzleSchema } = buildSchema(db, {
+    singularTypes: true,
+    prefixes: {
+      insert: 'create',
+      update: 'update',
+      delete: 'delete',
+    },
+  });
 
   const extended = extendSchema(drizzleSchema, parse(extensionSDL));
 
@@ -28,5 +35,5 @@ export function buildAppSchema(db: DB): GraphQLSchema {
     resolvers: mergeResolvers([noteResolvers, orgResolvers]),
   });
 
-  return applyMiddleware(withResolvers, permissions);
+  return applyMiddleware(withResolvers, permissions as IMiddleware);
 }

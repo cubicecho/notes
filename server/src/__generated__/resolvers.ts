@@ -14,6 +14,44 @@ export type Scalars = {
   DateTime: { input: unknown; output: unknown; }
 };
 
+export type CreateNoteInput = {
+  content?: InputMaybe<Scalars['String']['input']>;
+  /** DateTime */
+  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  orgId?: InputMaybe<Scalars['String']['input']>;
+  title?: InputMaybe<Scalars['String']['input']>;
+  /** DateTime */
+  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
+  userId: Scalars['String']['input'];
+};
+
+export type CreateOrgInput = {
+  /** DateTime */
+  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+  /** DateTime */
+  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
+};
+
+export type CreateOrgMemberInput = {
+  /** DateTime */
+  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
+  orgId: Scalars['String']['input'];
+  role?: InputMaybe<OrgMembersRoleEnum>;
+  userId: Scalars['String']['input'];
+};
+
+export type CreateUserInput = {
+  /** DateTime */
+  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
+  email: Scalars['String']['input'];
+  id?: InputMaybe<Scalars['String']['input']>;
+  /** DateTime */
+  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
+};
+
 export type DateTimeFilter = {
   OR?: InputMaybe<Array<DateTimeFilterOr>>;
   /** DateTime */
@@ -102,44 +140,6 @@ export type InnerOrder = {
   priority: Scalars['Int']['input'];
 };
 
-export type InsertIntoNoteInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  /** DateTime */
-  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
-  id?: InputMaybe<Scalars['String']['input']>;
-  orgId?: InputMaybe<Scalars['String']['input']>;
-  title?: InputMaybe<Scalars['String']['input']>;
-  /** DateTime */
-  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
-  userId: Scalars['String']['input'];
-};
-
-export type InsertIntoOrgInput = {
-  /** DateTime */
-  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
-  id?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-  /** DateTime */
-  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
-};
-
-export type InsertIntoOrgMemberInput = {
-  /** DateTime */
-  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
-  orgId: Scalars['String']['input'];
-  role?: InputMaybe<OrgMembersRoleEnum>;
-  userId: Scalars['String']['input'];
-};
-
-export type InsertIntoUserInput = {
-  /** DateTime */
-  createdAt?: InputMaybe<Scalars['DateTime']['input']>;
-  email: Scalars['String']['input'];
-  id?: InputMaybe<Scalars['String']['input']>;
-  /** DateTime */
-  updatedAt?: InputMaybe<Scalars['DateTime']['input']>;
-};
-
 export type Mutation = {
   __typename?: 'Mutation';
   /**
@@ -147,25 +147,18 @@ export type Mutation = {
    * Defaults to role 'member' if not specified.
    */
   addOrgMember: OrgMember;
-  /**
-   * Create a note. If orgId is supplied the note belongs to the org (caller
-   * must be a member); otherwise it is a personal note.
-   */
-  createNote: Note;
-  /** Create a new org and add the caller as owner. */
-  createOrg: Org;
-  deleteFromNotes: Array<Note>;
-  deleteFromOrgMembers: Array<OrgMember>;
-  deleteFromOrgs: Array<Org>;
-  deleteFromUsers: Array<User>;
-  insertIntoNote?: Maybe<Note>;
-  insertIntoNotes: Array<Note>;
-  insertIntoOrg?: Maybe<Org>;
-  insertIntoOrgMember?: Maybe<OrgMember>;
-  insertIntoOrgMembers: Array<OrgMember>;
-  insertIntoOrgs: Array<Org>;
-  insertIntoUser?: Maybe<User>;
-  insertIntoUsers: Array<User>;
+  createNote?: Maybe<Note>;
+  createNotes: Array<Note>;
+  createOrg?: Maybe<Org>;
+  createOrgMember?: Maybe<OrgMember>;
+  createOrgMembers: Array<OrgMember>;
+  createOrgs: Array<Org>;
+  createUser?: Maybe<User>;
+  createUsers: Array<User>;
+  deleteNotes: Array<Note>;
+  deleteOrgMembers: Array<OrgMember>;
+  deleteOrgs: Array<Org>;
+  deleteUsers: Array<User>;
   /** Remove a user from an org. Caller must be an owner of the org. */
   removeOrgMember: OrgMember;
   updateNotes: Array<Note>;
@@ -183,74 +176,62 @@ export type MutationAddOrgMemberArgs = {
 
 
 export type MutationCreateNoteArgs = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  orgId?: InputMaybe<Scalars['String']['input']>;
-  title?: InputMaybe<Scalars['String']['input']>;
+  values: CreateNoteInput;
+};
+
+
+export type MutationCreateNotesArgs = {
+  values: Array<CreateNoteInput>;
 };
 
 
 export type MutationCreateOrgArgs = {
-  name: Scalars['String']['input'];
+  values: CreateOrgInput;
 };
 
 
-export type MutationDeleteFromNotesArgs = {
+export type MutationCreateOrgMemberArgs = {
+  values: CreateOrgMemberInput;
+};
+
+
+export type MutationCreateOrgMembersArgs = {
+  values: Array<CreateOrgMemberInput>;
+};
+
+
+export type MutationCreateOrgsArgs = {
+  values: Array<CreateOrgInput>;
+};
+
+
+export type MutationCreateUserArgs = {
+  values: CreateUserInput;
+};
+
+
+export type MutationCreateUsersArgs = {
+  values: Array<CreateUserInput>;
+};
+
+
+export type MutationDeleteNotesArgs = {
   where?: InputMaybe<NoteFilters>;
 };
 
 
-export type MutationDeleteFromOrgMembersArgs = {
+export type MutationDeleteOrgMembersArgs = {
   where?: InputMaybe<OrgMemberFilters>;
 };
 
 
-export type MutationDeleteFromOrgsArgs = {
+export type MutationDeleteOrgsArgs = {
   where?: InputMaybe<OrgFilters>;
 };
 
 
-export type MutationDeleteFromUsersArgs = {
+export type MutationDeleteUsersArgs = {
   where?: InputMaybe<UserFilters>;
-};
-
-
-export type MutationInsertIntoNoteArgs = {
-  values: InsertIntoNoteInput;
-};
-
-
-export type MutationInsertIntoNotesArgs = {
-  values: Array<InsertIntoNoteInput>;
-};
-
-
-export type MutationInsertIntoOrgArgs = {
-  values: InsertIntoOrgInput;
-};
-
-
-export type MutationInsertIntoOrgMemberArgs = {
-  values: InsertIntoOrgMemberInput;
-};
-
-
-export type MutationInsertIntoOrgMembersArgs = {
-  values: Array<InsertIntoOrgMemberInput>;
-};
-
-
-export type MutationInsertIntoOrgsArgs = {
-  values: Array<InsertIntoOrgInput>;
-};
-
-
-export type MutationInsertIntoUserArgs = {
-  values: InsertIntoUserInput;
-};
-
-
-export type MutationInsertIntoUsersArgs = {
-  values: Array<InsertIntoUserInput>;
 };
 
 
@@ -486,7 +467,7 @@ export type OrgOrderBy = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Notes owned by the authenticated user, plus notes in all their orgs. */
+  /** Personal notes owned by the authenticated user (excludes org notes). */
   myNotes: Array<Note>;
   /** Orgs the authenticated user is a member of. */
   myOrgs: Array<Org>;
@@ -762,16 +743,16 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = ResolversObject<{
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  CreateNoteInput: CreateNoteInput;
+  CreateOrgInput: CreateOrgInput;
+  CreateOrgMemberInput: CreateOrgMemberInput;
+  CreateUserInput: CreateUserInput;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DateTimeFilter: DateTimeFilter;
   DateTimeFilterOr: DateTimeFilterOr;
   IdFilter: IdFilter;
   IdFilterOr: IdFilterOr;
   InnerOrder: InnerOrder;
-  InsertIntoNoteInput: InsertIntoNoteInput;
-  InsertIntoOrgInput: InsertIntoOrgInput;
-  InsertIntoOrgMemberInput: InsertIntoOrgMemberInput;
-  InsertIntoUserInput: InsertIntoUserInput;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Note: ResolverTypeWrapper<Note>;
@@ -807,16 +788,16 @@ export type ResolversTypes = ResolversObject<{
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = ResolversObject<{
   Boolean: Scalars['Boolean']['output'];
+  CreateNoteInput: CreateNoteInput;
+  CreateOrgInput: CreateOrgInput;
+  CreateOrgMemberInput: CreateOrgMemberInput;
+  CreateUserInput: CreateUserInput;
   DateTime: Scalars['DateTime']['output'];
   DateTimeFilter: DateTimeFilter;
   DateTimeFilterOr: DateTimeFilterOr;
   IdFilter: IdFilter;
   IdFilterOr: IdFilterOr;
   InnerOrder: InnerOrder;
-  InsertIntoNoteInput: InsertIntoNoteInput;
-  InsertIntoOrgInput: InsertIntoOrgInput;
-  InsertIntoOrgMemberInput: InsertIntoOrgMemberInput;
-  InsertIntoUserInput: InsertIntoUserInput;
   Int: Scalars['Int']['output'];
   Mutation: Record<PropertyKey, never>;
   Note: Note;
@@ -853,20 +834,18 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
   addOrgMember?: Resolver<ResolversTypes['OrgMember'], ParentType, ContextType, RequireFields<MutationAddOrgMemberArgs, 'orgId' | 'userId'>>;
-  createNote?: Resolver<ResolversTypes['Note'], ParentType, ContextType, Partial<MutationCreateNoteArgs>>;
-  createOrg?: Resolver<ResolversTypes['Org'], ParentType, ContextType, RequireFields<MutationCreateOrgArgs, 'name'>>;
-  deleteFromNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<MutationDeleteFromNotesArgs>>;
-  deleteFromOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<MutationDeleteFromOrgMembersArgs>>;
-  deleteFromOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, Partial<MutationDeleteFromOrgsArgs>>;
-  deleteFromUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, Partial<MutationDeleteFromUsersArgs>>;
-  insertIntoNote?: Resolver<Maybe<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationInsertIntoNoteArgs, 'values'>>;
-  insertIntoNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationInsertIntoNotesArgs, 'values'>>;
-  insertIntoOrg?: Resolver<Maybe<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationInsertIntoOrgArgs, 'values'>>;
-  insertIntoOrgMember?: Resolver<Maybe<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationInsertIntoOrgMemberArgs, 'values'>>;
-  insertIntoOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationInsertIntoOrgMembersArgs, 'values'>>;
-  insertIntoOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationInsertIntoOrgsArgs, 'values'>>;
-  insertIntoUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationInsertIntoUserArgs, 'values'>>;
-  insertIntoUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationInsertIntoUsersArgs, 'values'>>;
+  createNote?: Resolver<Maybe<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationCreateNoteArgs, 'values'>>;
+  createNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationCreateNotesArgs, 'values'>>;
+  createOrg?: Resolver<Maybe<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationCreateOrgArgs, 'values'>>;
+  createOrgMember?: Resolver<Maybe<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationCreateOrgMemberArgs, 'values'>>;
+  createOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationCreateOrgMembersArgs, 'values'>>;
+  createOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, RequireFields<MutationCreateOrgsArgs, 'values'>>;
+  createUser?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationCreateUserArgs, 'values'>>;
+  createUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, RequireFields<MutationCreateUsersArgs, 'values'>>;
+  deleteNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, Partial<MutationDeleteNotesArgs>>;
+  deleteOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, Partial<MutationDeleteOrgMembersArgs>>;
+  deleteOrgs?: Resolver<Array<ResolversTypes['Org']>, ParentType, ContextType, Partial<MutationDeleteOrgsArgs>>;
+  deleteUsers?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, Partial<MutationDeleteUsersArgs>>;
   removeOrgMember?: Resolver<ResolversTypes['OrgMember'], ParentType, ContextType, RequireFields<MutationRemoveOrgMemberArgs, 'orgId' | 'userId'>>;
   updateNotes?: Resolver<Array<ResolversTypes['Note']>, ParentType, ContextType, RequireFields<MutationUpdateNotesArgs, 'set'>>;
   updateOrgMembers?: Resolver<Array<ResolversTypes['OrgMember']>, ParentType, ContextType, RequireFields<MutationUpdateOrgMembersArgs, 'set'>>;

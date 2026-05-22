@@ -35,7 +35,7 @@ describe('notes resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse('query { myNotes { id title userId } }'),
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
@@ -64,7 +64,7 @@ describe('notes resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse('query { myNotes { title } }'),
-        contextValue: { db: ctx.db, userId: userId1 },
+        contextValue: ctx.makeContext(userId1),
       });
 
       expect(result.errors).toBeUndefined();
@@ -76,84 +76,7 @@ describe('notes resolvers', () => {
       const result = await execute({
         schema: ctx.schema,
         document: parse('query { myNotes { id } }'),
-        contextValue: { db: ctx.db, userId: undefined },
-      });
-
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not authenticated/);
-    });
-  });
-
-  describe('createNote', () => {
-    it('creates a personal note owned by the authenticated user', async () => {
-      const result = await execute({
-        schema: ctx.schema,
-        document: parse(
-          `mutation { createNote(title: "My Note", content: "hi") { id title content userId orgId } }`,
-        ),
-        contextValue: { db: ctx.db, userId: userId1 },
-      });
-
-      expect(result.errors).toBeUndefined();
-      const note = result.data?.createNote as {
-        id: string;
-        title: string;
-        userId: string;
-        orgId: string | null;
-      };
-      expect(note.title).toBe('My Note');
-      expect(note.userId).toBe(userId1);
-      expect(note.orgId).toBeNull();
-    });
-
-    it('creates an org note when orgId is supplied and user is a member', async () => {
-      const org = first(
-        await ctx.db.insert(orgs).values({ name: 'My Org' }).returning(),
-      );
-      await ctx.db
-        .insert(orgMembers)
-        .values({ orgId: org.id, userId: userId1, role: 'owner' });
-
-      const result = await execute({
-        schema: ctx.schema,
-        document: parse(
-          `mutation CreateOrgNote($orgId: String!) { createNote(title: "Org Note", orgId: $orgId) { orgId } }`,
-        ),
-        variableValues: { orgId: org.id },
-        contextValue: { db: ctx.db, userId: userId1 },
-      });
-
-      expect(result.errors).toBeUndefined();
-      const note = result.data?.createNote as { orgId: string };
-      expect(note.orgId).toBe(org.id);
-    });
-
-    it('rejects createNote with orgId when user is not a member', async () => {
-      const org = first(
-        await ctx.db.insert(orgs).values({ name: 'Other Org' }).returning(),
-      );
-      await ctx.db
-        .insert(orgMembers)
-        .values({ orgId: org.id, userId: userId2, role: 'owner' });
-
-      const result = await execute({
-        schema: ctx.schema,
-        document: parse(
-          'mutation($orgId: String!) { createNote(orgId: $orgId) { id } }',
-        ),
-        variableValues: { orgId: org.id },
-        contextValue: { db: ctx.db, userId: userId1 },
-      });
-
-      expect(result.errors).toBeDefined();
-      expect(first(result.errors ?? []).message).toMatch(/Not a member/);
-    });
-
-    it('returns error when not authenticated', async () => {
-      const result = await execute({
-        schema: ctx.schema,
-        document: parse(`mutation { createNote(title: "x") { id } }`),
-        contextValue: { db: ctx.db, userId: undefined },
+        contextValue: ctx.makeContext(),
       });
 
       expect(result.errors).toBeDefined();

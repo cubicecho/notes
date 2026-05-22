@@ -5,23 +5,3 @@ extend type Query {
   """Orgs the authenticated user is a member of."""
   myOrgs: [Org!]!
 }
-
-extend type Mutation {
-  """Create a new org and add the caller as owner."""
-  createOrg(name: String!): Org!
-
-  """
-  Add a user to an org. Caller must be an owner of the org.
-  Defaults to role 'member' if not specified.
-  """
-  addOrgMember(orgId: String!, userId: String!, role: OrgMembersRoleEnum): OrgMember!
-
-  """Remove a user from an org. Caller must be an owner of the org."""
-  removeOrgMember(orgId: String!, userId: String!): OrgMember!
-
-  """
-  Create a note. If orgId is supplied the note belongs to the org (caller
-  must be a member); otherwise it is a personal note.
-  """
-  createNote(title: String, content: String, orgId: String): Note!
-}
