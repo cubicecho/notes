@@ -134,27 +134,34 @@ db/
 
 ```
 server/
-├── generate_schema.ts         # Writes src/__generated__/schema.graphql (in-memory PGLite)
+├── generate_schema.ts            # Writes src/__generated__/schema.graphql (in-memory PGLite)
 ├── tsconfig.json
 └── src/
-    ├── index.ts               # Express + Apollo Server (port 4000)
-    ├── context.ts             # Context interface: { db, userId? }
+    ├── index.ts                  # Express + Apollo Server (port 4000)
+    ├── context.ts                # Context: { db, userId?, getUserMemberships() }
     ├── middleware/
-    │   └── permissions.ts     # graphql-middleware auth rules (requireAuth per field)
+    │   └── permissions/
+    │       ├── utils.ts          # Generic library: SubjectName, SubjectMap, ArgsOf,
+    │       │                     #   Rule, PermissionsMap, deny/accept, Actions,
+    │       │                     #   AppAbility, createRequireCan, createSubjects, createTyped
+    │       ├── abilities.ts      # App bindings: AppSubjectMap (auto-derived), Subject const,
+    │       │                     #   typed(), defineAbilitiesFor() (CASL MongoAbility)
+    │       └── index.ts          # permissions export: requireCan instance + PermissionsMap
     ├── schema/
-    │   ├── index.ts           # buildAppSchema(db): drizzle-graphql + extensions + permissions
-    │   ├── extensions.graphql # Custom SDL: myNotes, myOrgs, createOrg, createNote, etc.
+    │   ├── index.ts              # buildAppSchema(db): drizzle-graphql + extensions + permissions
+    │   ├── extensions.graphql    # Custom SDL: myNotes, myOrgs, createOrg
     │   └── resolvers/
-    │       ├── index.ts       # Reads extensions.graphql, wires applyNoteResolvers + applyOrgResolvers
-    │       ├── notes.ts       # myNotes, createNote resolvers
-    │       └── orgs.ts        # myOrgs, createOrg, addOrgMember, removeOrgMember resolvers
+    │       ├── notes.ts          # noteResolvers: myNotes (delegates to note query)
+    │       └── orgs.ts           # orgResolvers: myOrgs, createOrg (delegates + adds owner)
     ├── __tests__/
     │   ├── helpers/
-    │   │   └── db.ts          # createTestContext(), first() helper
+    │   │   └── db.ts             # createTestContext(), first() helper
     │   └── resolvers/
-    │       ├── notes.test.ts  # Unit tests for notes resolvers (in-memory PGLite)
-    │       └── orgs.test.ts   # Unit tests for orgs resolvers (in-memory PGLite)
-    └── __generated__/         # schema.graphql + resolvers.ts (codegen output)
+    │       ├── abilities.test.ts # CASL ability unit tests (pure, no GraphQL)
+    │       ├── notes.test.ts     # Notes resolver integration tests
+    │       ├── orgs.test.ts      # Orgs resolver integration tests
+    │       └── permissions.test.ts # Permission middleware integration tests
+    └── __generated__/            # schema.graphql + resolvers.ts (codegen output)
 ```
 
 ---
