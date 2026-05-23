@@ -8,7 +8,12 @@ import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import { ErrorLink } from '@apollo/client/link/error';
 import { getToken } from './lib/auth';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+// EXPO_PUBLIC_API_URL takes full precedence.
+// Otherwise fall back to building the URL from EXPO_PUBLIC_PORT (which should
+// match the server's PORT value in .env).
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  `http://localhost:${process.env.EXPO_PUBLIC_PORT ?? '4000'}`;
 
 const httpLink = new HttpLink({
   uri: `${API_URL}/graphql`,
