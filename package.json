@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:app\"",
     "dev:server": "npm run dev -w @cubicecho/notes-server",
-    "dev:app": "cd app && npx expo start --web",
+    "dev:app": "cd app && npx expo start",
     "build": "npm run build:app && npm run build:server",
     "build:app": "cd app && npx expo export --platform web",
     "build:server": "npm run build -w @cubicecho/notes-server",
