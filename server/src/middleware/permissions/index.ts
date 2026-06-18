@@ -11,6 +11,12 @@
  * manual type listings needed.
  */
 
+import {
+  type PermissionsMap,
+  accept,
+  createCan,
+  deny,
+} from '@vantreeseba/graphql-casl';
 import type {
   MutationCreateNoteArgs,
   MutationCreateOrgArgs,
@@ -25,22 +31,20 @@ import type {
 } from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
 import { Actions, Subject, defineAbilitiesFor, typed } from './abilities.ts';
-import { type PermissionsMap, accept, createCan, deny } from './utils.ts';
 
 const { create, read, update, delete: del } = Actions;
 const { User, Note, Org, OrgMember } = Subject;
 
 // requireCan is bound to this app's context shape, ability builder, and
 // typed() subject constructor. Any project using the library creates its
-// own instance via createRequireCan with its own getAbility / isAuthenticated.
+// own instance via createCan with its own getAbility / isAuthenticated.
 const canUser = createCan<Context, ReturnType<typeof defineAbilitiesFor>>(
   async (ctx) => {
     const memberships = await ctx.getUserMemberships();
     return defineAbilitiesFor(ctx.userId, memberships);
   },
   (ctx) => ctx.userId != null,
-  // biome-ignore lint/suspicious/noExplicitAny: typed<K> generic can't widen to (string) at the call site
-  typed as (type: string, attrs: Record<string, unknown>) => any,
+  typed,
 );
 
 export const permissions: PermissionsMap<Resolvers> = {

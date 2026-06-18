@@ -5,9 +5,10 @@ import type { DB } from '@cubicecho/notes-db';
 import { mergeResolvers } from '@graphql-tools/merge';
 import { addResolversToSchema } from '@graphql-tools/schema';
 import { buildSchema } from '@vantreeseba/drizzle-graphql';
+import { applyPermissions } from '@vantreeseba/graphql-casl';
 import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
-import { applyMiddleware } from 'graphql-middleware';
+import type { Resolvers } from '../__generated__/resolvers.ts';
 import { permissions } from '../middleware/permissions/index.ts';
 import { authResolvers } from './resolvers/auth.ts';
 import { noteResolvers } from './resolvers/notes.ts';
@@ -36,5 +37,5 @@ export function buildAppSchema(db: DB): GraphQLSchema {
     resolvers: mergeResolvers([authResolvers, noteResolvers, orgResolvers]),
   });
 
-  return applyMiddleware(withResolvers, permissions);
+  return applyPermissions<Resolvers>(withResolvers, permissions);
 }

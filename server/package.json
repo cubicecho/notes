@@ -14,6 +14,7 @@
     "@cubicecho/notes-db": "*",
     "@graphql-tools/delegate": "^12.0.16",
     "@vantreeseba/drizzle-graphql": "^1.0.3",
+    "@vantreeseba/graphql-casl": "^0.2.1",
     "cors": "^2.8.5",
     "drizzle-orm": "~1.0.0-rc.2",
     "express": "^4.21.2",

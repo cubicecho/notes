@@ -1,9 +1,4 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
-import type {
-  Resolvers,
-  ResolversTypes,
-} from '../../__generated__/resolvers.ts';
-import type { OrgMembership } from '../../context.ts';
 import {
   Actions,
   type AppAbility,
@@ -12,7 +7,12 @@ import {
   abilityOptions,
   createSubjects,
   createTyped,
-} from './utils.ts';
+} from '@vantreeseba/graphql-casl';
+import type {
+  Resolvers,
+  ResolversTypes,
+} from '../../__generated__/resolvers.ts';
+import type { OrgMembership } from '../../context.ts';
 
 // ---------------------------------------------------------------------------
 // App-specific bindings — fully derived from the generated schema types.
