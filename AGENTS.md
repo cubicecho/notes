@@ -20,7 +20,7 @@ Monorepo: npm workspaces with four packages — `app/` (Expo + React Native Web)
 | State    | React Context + useReducer + localStorage (MVP) |
 | API      | Apollo Server 5, Express 4, GraphQL (scaffolded) |
 | Database | Drizzle ORM, PGLite (embedded Postgres) |
-| Testing  | Vitest |
+| Testing  | node:test (`node --test`, native TS via `--experimental-strip-types`) |
 | Linting  | Biome |
 | Runtime  | Node 22+, ESM |
 
@@ -41,8 +41,8 @@ npm run typecheck    # tsc --noEmit across all packages
 npm run lint         # biome check .
 npm run lint:fix     # biome check --write .  (safe fixes only)
 npx biome check --write --unsafe .  # also applies unsafe fixes (e.g. useLiteralKeys)
-npm test             # codegen + vitest run (always runs codegen first)
-npm run test:watch   # vitest in watch mode (no codegen pre-step)
+npm test             # codegen + node --test (always runs codegen first)
+                     # discovers server/src/__tests__/**/*.test.ts
 ```
 
 **After every chunk of work:** run `npm run lint:fix && npm run typecheck` to catch formatting and type issues early. If lint errors remain after `lint:fix`, run `npx biome check --write --unsafe .`.
