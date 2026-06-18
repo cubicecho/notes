@@ -5,7 +5,7 @@ import {
   Subject,
   defineAbilitiesFor,
   typed,
-} from '../../middleware/permissions/abilities.ts';
+} from '../../../middleware/permissions/abilities.ts';
 
 const owner = [{ orgId: 'org1', role: 'owner' as const }];
 const member = [{ orgId: 'org1', role: 'member' as const }];

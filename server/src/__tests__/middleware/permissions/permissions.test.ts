@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
 import { notes, orgMembers, orgs, users } from '@cubicecho/notes-db';
 import { graphql } from 'graphql';
-import { cleanDb, createTestContext, first } from '../helpers/db.ts';
+import { cleanDb, createTestContext, first } from '../../helpers/db.ts';
 
 describe('permissions', () => {
   let ctx: Awaited<ReturnType<typeof createTestContext>>;
