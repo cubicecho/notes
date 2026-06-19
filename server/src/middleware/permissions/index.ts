@@ -19,7 +19,6 @@ import {
 } from '@vantreeseba/graphql-casl';
 import type {
   MutationCreateNoteArgs,
-  MutationCreateOrgArgs,
   MutationCreateOrgMemberArgs,
   MutationDeleteOrgMembersArgs,
   MutationDeleteOrgsArgs,
@@ -30,15 +29,21 @@ import type {
   Resolvers,
 } from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
-import { Actions, Subject, defineAbilitiesFor, typed } from './abilities.ts';
+import {
+  Actions,
+  type AppSubjectMap,
+  Subject,
+  defineAbilitiesFor,
+  typed,
+} from './abilities.ts';
 
 const { create, read, update, delete: del } = Actions;
 const { User, Note, Org, OrgMember } = Subject;
 
-// requireCan is bound to this app's context shape, ability builder, and
-// typed() subject constructor. Any project using the library creates its
-// own instance via createCan with its own getAbility / isAuthenticated.
-const canUser = createCan<Context, ReturnType<typeof defineAbilitiesFor>>(
+// requireCan is bound to this app's context shape, subject map, and typed()
+// subject constructor. Any project using the library creates its own instance
+// via createCan with its own getAbility / isAuthenticated.
+const canUser = createCan<Context, AppSubjectMap>(
   async (ctx) => {
     const memberships = await ctx.getUserMemberships();
     return defineAbilitiesFor(ctx.userId, memberships);
@@ -69,53 +74,53 @@ export const permissions: PermissionsMap<Resolvers> = {
     // Users
     createUsers: deny,
     createUser: deny,
-    updateUsers: canUser<MutationUpdateUsersArgs>(update, User, (args) => ({
-      id: args.where?.id?.eq,
+    updateUsers: canUser(update, User, (args: MutationUpdateUsersArgs) => ({
+      id: args.where?.id?.eq ?? undefined,
     })),
     deleteUsers: deny,
 
     // Notes
     createNotes: deny,
-    createNote: canUser<MutationCreateNoteArgs>(create, Note, (args) => ({
+    createNote: canUser(create, Note, (args: MutationCreateNoteArgs) => ({
       orgId: args.values.orgId ?? null,
     })),
-    updateNotes: canUser<MutationUpdateNotesArgs>(update, Note, (args) => ({
-      orgId: args.where?.orgId?.eq,
-      userId: args.where?.userId?.eq,
+    updateNotes: canUser(update, Note, (args: MutationUpdateNotesArgs) => ({
+      orgId: args.where?.orgId?.eq ?? undefined,
+      userId: args.where?.userId?.eq ?? undefined,
     })),
     deleteNotes: deny,
 
     // Orgs
     createOrgs: deny,
-    createOrg: canUser<MutationCreateOrgArgs>(create, Org),
-    updateOrgs: canUser<MutationUpdateOrgsArgs>(update, Org, (args) => ({
-      id: args.where?.id?.eq,
+    createOrg: canUser(create, Org),
+    updateOrgs: canUser(update, Org, (args: MutationUpdateOrgsArgs) => ({
+      id: args.where?.id?.eq ?? undefined,
     })),
-    deleteOrgs: canUser<MutationDeleteOrgsArgs>(del, Org, (args) => ({
-      id: args.where?.id?.eq,
+    deleteOrgs: canUser(del, Org, (args: MutationDeleteOrgsArgs) => ({
+      id: args.where?.id?.eq ?? undefined,
     })),
 
     // OrgMembers
     createOrgMembers: deny,
-    createOrgMember: canUser<MutationCreateOrgMemberArgs>(
+    createOrgMember: canUser(
       create,
       OrgMember,
-      (args) => ({
+      (args: MutationCreateOrgMemberArgs) => ({
         orgId: args.values.orgId,
       }),
     ),
-    updateOrgMembers: canUser<MutationUpdateOrgMembersArgs>(
+    updateOrgMembers: canUser(
       update,
       OrgMember,
-      (args) => ({
-        orgId: args.where?.orgId?.eq,
+      (args: MutationUpdateOrgMembersArgs) => ({
+        orgId: args.where?.orgId?.eq ?? undefined,
       }),
     ),
-    deleteOrgMembers: canUser<MutationDeleteOrgMembersArgs>(
+    deleteOrgMembers: canUser(
       del,
       OrgMember,
-      (args) => ({
-        orgId: args.where?.orgId?.eq,
+      (args: MutationDeleteOrgMembersArgs) => ({
+        orgId: args.where?.orgId?.eq ?? undefined,
       }),
     ),
   },

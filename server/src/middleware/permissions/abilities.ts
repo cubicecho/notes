@@ -1,49 +1,30 @@
-import { AbilityBuilder, createMongoAbility } from '@casl/ability';
+/**
+ * CASL-based permissions middleware — parallel implementation to permissions/.
+ *
+ * The subject map, `Subject` const, `typed()` tagger, and `ability()` builder
+ * factory are generated from the schema by @vantreeseba/graphql-casl-codegen
+ * (see codegen.server.ts) and live alongside the resolver types in
+ * __generated__/resolvers.ts — no manual type listing.
+ *
+ * Abilities are defined per-request via defineAbilitiesFor() using MongoDB-style
+ * conditions. Subject type detection uses __typename (already present on all
+ * generated GraphQL types).
+ *
+ *   ability.can('update', typed('User', { id: targetId }))
+ */
+
+import { Actions, type GraphQLAbility } from '@vantreeseba/graphql-casl';
 import {
-  Actions,
-  type AppAbility,
-  type SubjectMap,
-  type SubjectName,
-  abilityOptions,
-  createSubjects,
-  createTyped,
-} from '@vantreeseba/graphql-casl';
-import type {
-  Resolvers,
-  ResolversTypes,
-} from '../../__generated__/resolvers.ts';
+  type AppSubjectMap,
+  Subject,
+  ability,
+  typed,
+} from '../../__generated__/permissions.ts';
 import type { OrgMembership } from '../../context.ts';
 
-// ---------------------------------------------------------------------------
-// App-specific bindings — fully derived from the generated schema types.
-// Non-entity response types (auth payloads etc.) are excluded from the
-// subject map since they are not domain objects with CASL permissions.
-// ---------------------------------------------------------------------------
-
-type NonEntityTypes = 'AuthPayload' | 'RequestMagicLinkResult';
-
-export type AppSubjectMap = Omit<
-  SubjectMap<Resolvers, ResolversTypes>,
-  NonEntityTypes
->;
-export type AppSubjectName = Exclude<SubjectName<Resolvers>, NonEntityTypes>;
-
-// typed() helper bound to this app's subject map.
-export const typed = createTyped<AppSubjectMap>();
-
-// Subject const — use instead of raw strings in can/cannot calls.
-// `satisfies`-style validation via createSubjects ensures this object covers
-// every AppSubjectName; TypeScript errors if the schema adds a new domain type
-// and this object isn't updated.
-export const Subject = createSubjects<AppSubjectMap>()({
-  User: 'User',
-  Note: 'Note',
-  Org: 'Org',
-  OrgMember: 'OrgMember',
-} as const);
-
-export { Actions };
-export type { AppAbility };
+export { Actions, Subject, typed };
+export type { AppSubjectMap };
+export type AppAbility = GraphQLAbility<AppSubjectMap>;
 
 // ---------------------------------------------------------------------------
 // defineAbilitiesFor
@@ -53,13 +34,11 @@ export function defineAbilitiesFor(
   userId: string | undefined,
   memberships: OrgMembership[],
 ): AppAbility {
-  const { can, cannot, build } = new AbilityBuilder<AppAbility>(
-    createMongoAbility,
-  );
+  const { can, cannot, build } = ability();
 
   if (!userId) {
-    cannot(Actions.manage, 'all');
-    return build(abilityOptions);
+    // No rules ⇒ everything denied.
+    return build();
   }
 
   const memberOrgIds = memberships.map((m) => m.orgId);
@@ -99,5 +78,5 @@ export function defineAbilitiesFor(
     can(Actions.delete, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
   }
 
-  return build(abilityOptions);
+  return build();
 }

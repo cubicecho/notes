@@ -33,7 +33,8 @@
     "@graphql-codegen/typescript-resolvers": "^6.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@vantreeseba/graphql-mocks": "^1.0.5",
+    "@vantreeseba/graphql-casl-codegen": "^0.2.1",
+    "@vantreeseba/graphql-mocks-codegen": "^2.1.0",
     "concurrently": "^9.1.2",
     "typescript": "~5.9.2"
   },

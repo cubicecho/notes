@@ -58,7 +58,14 @@ npm run db:studio    # Drizzle Studio GUI
 ```bash
 npm run codegen              # full pipeline: generate:schema → codegen:server → codegen:client
 npm run generate:schema      # writes server/src/__generated__/schema.graphql (in-memory PGLite)
-npm run codegen:server       # generates server/src/__generated__/resolvers.ts
+                             # uses buildBaseSchema (schema/base.ts) — no permissions/CASL
+                             # bindings, so it never imports the files it generates
+npm run codegen:server       # generates server/src/__generated__/:
+                             #   resolvers.ts       (typescript + typescript-resolvers)
+                             #   permissions.ts     (@vantreeseba/graphql-casl-codegen:
+                             #                       Subject / typed / ability / AppSubjectMap)
+                             #   schema-type-map.ts (@vantreeseba/graphql-mocks-codegen:
+                             #                       SchemaTypeMap for buildMocks<SchemaTypeMap>)
 npm run codegen:client       # generates app/src/__generated__/
 ```
 
