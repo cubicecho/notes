@@ -1,4 +1,6 @@
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@as-integrations/express4';
@@ -57,7 +59,22 @@ app.use(
   }),
 );
 
+// Serve the built Expo web client (app/dist) in production so the API and the
+// web app are delivered from a single container. Skipped in dev, where the
+// client runs under `expo start`.
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const clientDist = path.resolve(__dirname, '../../app/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 await new Promise<void>((resolve) =>
   httpServer.listen({ port: PORT }, resolve),
 );
 console.log(`GraphQL server ready at http://localhost:${PORT}/graphql`);
+if (process.env.NODE_ENV === 'production') {
+  console.log(`Web app served at http://localhost:${PORT}`);
+}

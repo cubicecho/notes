@@ -1,0 +1,21 @@
+# Default single-container setup using the embedded PGlite database.
+# `docker compose up --build` serves the API and web app at http://localhost:4000
+services:
+  notes:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      - notes-data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - PGLITE_DATA_DIR=/data/pgdata
+      # CORS origin for the GraphQL endpoint. The web app is served same-origin,
+      # so this only matters for external clients.
+      - APP_URL=http://localhost:4000
+      # Placeholder user for the MVP (no login flow yet).
+      - DEMO_USER_ID=00000000-0000-0000-0000-000000000001
+
+volumes:
+  notes-data:

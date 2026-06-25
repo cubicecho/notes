@@ -1,0 +1,33 @@
+# Setup backed by an external Postgres instead of embedded PGlite.
+# `docker compose -f docker-compose.postgres.yml up --build`
+services:
+  notes:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgres://notes:notes@postgres:5432/notes
+      - APP_URL=http://localhost:4000
+      - DEMO_USER_ID=00000000-0000-0000-0000-000000000001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: notes
+      POSTGRES_PASSWORD: notes
+      POSTGRES_DB: notes
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notes -d notes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

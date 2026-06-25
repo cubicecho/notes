@@ -1,0 +1,29 @@
+# Git and editor metadata
+.git
+.claude
+.agents
+.vscode
+.idea
+.DS_Store
+
+# Logs and local runtime data
+*.log
+pgdata
+coverage
+
+# Environment files (never bake secrets into the image)
+.env
+.env.local
+.env.*.local
+
+# node_modules are installed fresh inside the build stage
+node_modules
+**/node_modules
+
+# Local Expo cache / intermediate outputs — rebuilt inside Stage 1
+.expo
+app/.expo
+app/dist
+server/dist
+db/dist
+electron/dist
