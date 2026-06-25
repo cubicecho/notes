@@ -4,7 +4,12 @@
   "type": "module",
   "description": "CubicEcho Notes — a web-first Markdown notes app",
   "private": true,
-  "workspaces": ["app", "server", "db", "electron"],
+  "workspaces": [
+    "app",
+    "server",
+    "db",
+    "electron"
+  ],
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:app\"",
     "dev:server": "npm run dev -w @cubicecho/notes-server",
@@ -34,9 +39,9 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vantreeseba/graphql-casl-codegen": "^0.2.1",
-    "@vantreeseba/graphql-mocks-codegen": "^2.1.0",
+    "@vantreeseba/graphql-mocks-codegen": "^3.0.0",
     "concurrently": "^9.1.2",
-    "typescript": "~5.9.2"
+    "typescript": "~6.0.3"
   },
   "resolutions": {
     "graphql": "16.10.0"

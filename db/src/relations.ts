@@ -1,11 +1,12 @@
 import { defineRelations } from 'drizzle-orm';
+import { magicLinks } from './models/magic_links.ts';
 import { notes } from './models/notes.ts';
 import { orgMembers } from './models/org_members.ts';
 import { orgs } from './models/orgs.ts';
 import { users } from './models/users.ts';
 
 export const relations = defineRelations(
-  { users, notes, orgs, orgMembers },
+  { users, notes, orgs, orgMembers, magicLinks },
   (r) => ({
     users: {
       notes: r.many.notes({ from: r.users.id, to: r.notes.userId }),

@@ -8,7 +8,7 @@ import type { SchemaTypeMap } from '../../__generated__/schema-type-map.ts';
 
 // Defaults that keep mock output deterministic and readable. The schema's only
 // custom scalar is DateTime, mocked as an ISO timestamp.
-const DEFAULTS: BuildMocksOptions = {
+const DEFAULTS: BuildMocksOptions<SchemaTypeMap> = {
   seed: 42,
   stableIds: true,
   scalars: {
@@ -21,7 +21,7 @@ const DEFAULTS: BuildMocksOptions = {
 // their real types (User[], Note[], …) with no cast.
 export function buildSchemaMocks(
   schema: GraphQLSchema,
-  options: BuildMocksOptions = {},
+  options: BuildMocksOptions<SchemaTypeMap> = {},
 ): MockResult<SchemaTypeMap> {
   return buildMocks<SchemaTypeMap>(schema, { ...DEFAULTS, ...options });
 }
