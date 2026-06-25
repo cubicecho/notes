@@ -11,6 +11,15 @@ const TOKEN_TTL_MINUTES = 15;
 const IS_DEV = process.env.NODE_ENV !== 'production';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:8081';
 
+// Return the magic link directly in the API response instead of (or in addition
+// to) emailing it. Always on in dev; opt-in for production-style deployments
+// without a mail provider — e.g. local / homelab setups where the operator is
+// the only user and can copy the link from the login screen. Never enable this
+// on a publicly reachable instance: it hands out login links to anyone who
+// knows an email address.
+const EXPOSE_MAGIC_LINK =
+  IS_DEV || process.env.EXPOSE_MAGIC_LINK === 'true';
+
 export const authResolvers: {
   Query: QueryResolvers;
   Mutation: MutationResolvers;
@@ -42,14 +51,10 @@ export const authResolvers: {
 
       const link = `${APP_URL}/auth/verify?token=${token}`;
 
-      if (IS_DEV) {
-        console.log(`[auth] magic link for ${email}: ${link}`);
-        return { success: true, devLink: link };
-      }
-
-      // TODO: send email via provider (SendGrid, Resend, etc.)
-      console.log(`[auth] PROD magic link for ${email}: ${link}`);
-      return { success: true, devLink: null };
+      // TODO: send email via provider (SendGrid, Resend, etc.) when not exposing
+      // the link directly.
+      console.log(`[auth] magic link for ${email}: ${link}`);
+      return { success: true, devLink: EXPOSE_MAGIC_LINK ? link : null };
     },
 
     verifyMagicLink: async (_parent, args, context) => {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@apollo/client/react';
 import { createContext, useCallback, useContext } from 'react';
 import { graphql } from '../__generated__/index.js';
+import { useAuth } from './AuthContext';
 import { useWorkspace } from './WorkspaceContext';
 
 // ---------------------------------------------------------------------------
@@ -50,11 +51,8 @@ const CREATE_NOTE = graphql(`
 `);
 
 const UPDATE_NOTE = graphql(`
-  mutation UpdateNote($id: String!, $title: String, $content: String) {
-    updateNotes(
-      set: { title: $title, content: $content }
-      where: { id: { eq: $id } }
-    ) {
+  mutation UpdateNote($where: NoteFilters!, $title: String, $content: String) {
+    updateNotes(set: { title: $title, content: $content }, where: $where) {
       id
       title
       content
@@ -105,16 +103,24 @@ const NotesContext = createContext<NotesContextValue | null>(null);
 
 export function NotesProvider({ children }: { children: React.ReactNode }) {
   const { workspace } = useWorkspace();
+  const { user, loading: authLoading } = useAuth();
 
   const isOrg = workspace.type === 'org';
 
+  // Don't fetch notes until auth has resolved and a user is present. The token
+  // is loaded from storage asynchronously and Apollo reads it synchronously when
+  // building the request; firing these queries early sends an unauthenticated
+  // request that returns an empty list which never recovers. Once `user` is set,
+  // skip flips to false and Apollo runs the query with the token attached.
+  const authReady = !authLoading && !!user;
+
   const personalQuery = useQuery(MY_NOTES, {
-    skip: isOrg,
+    skip: isOrg || !authReady,
     fetchPolicy: 'cache-and-network',
   });
 
   const orgQuery = useQuery(ORG_NOTES, {
-    skip: !isOrg,
+    skip: !isOrg || !authReady,
     variables: { orgId: isOrg ? workspace.id : '' },
     fetchPolicy: 'cache-and-network',
   });
@@ -124,7 +130,11 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [deleteNoteMut] = useMutation(DELETE_NOTE);
 
   const rawNotes = isOrg ? orgQuery.data?.note : personalQuery.data?.myNotes;
-  const loading = isOrg ? orgQuery.loading : personalQuery.loading;
+  // Surface auth loading as notes loading so consumers show a spinner (rather
+  // than "No notes yet") while we wait for auth. A skipped query reports
+  // loading:false, so this gap must be filled explicitly.
+  const loading =
+    authLoading || (isOrg ? orgQuery.loading : personalQuery.loading);
 
   const notes: Note[] = (rawNotes ?? []).map((n) => ({
     id: n.id,
@@ -165,9 +175,16 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
 
   const updateNote = useCallback(
     async (id: string, patch: Partial<Pick<Note, 'title' | 'content'>>) => {
-      await updateNoteMut({ variables: { id, ...patch } });
+      // Scope the update by the note's ownership so the server's CASL
+      // permission check (which reads userId/orgId off the where clause) can
+      // authorize it; this also constrains the DB update to the matching row.
+      const note = notes.find((n) => n.id === id);
+      const where = note?.orgId
+        ? { id: { eq: id }, orgId: { eq: note.orgId } }
+        : { id: { eq: id }, userId: { eq: note?.userId } };
+      await updateNoteMut({ variables: { where, ...patch } });
     },
-    [updateNoteMut],
+    [updateNoteMut, notes],
   );
 
   const deleteNote = useCallback(
