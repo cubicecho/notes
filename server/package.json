@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=../.env --experimental-transform-types src/index.ts",
+    "dev": "node --env-file=../.env src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
@@ -11,10 +11,12 @@
     "@apollo/server": "^5.5.1",
     "@as-integrations/express4": "^1.1.2",
     "@casl/ability": "^7.0.0",
+    "@cubicecho/graphql-mcp": "^0.1.0",
     "@cubicecho/notes-db": "*",
     "@graphql-tools/delegate": "^12.0.16",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@vantreeseba/drizzle-graphql": "^1.0.3",
-    "@vantreeseba/graphql-casl": "^0.2.1",
+    "@vantreeseba/graphql-casl": "^1.0.0",
     "cors": "^2.8.5",
     "drizzle-orm": "~1.0.0-rc.2",
     "express": "^4.21.2",
@@ -23,8 +25,10 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/node": "^25.6.0"
+    "@types/node": "^25.6.0",
+    "@vantreeseba/graphql-mocks": "^3.0.0"
   }
 }

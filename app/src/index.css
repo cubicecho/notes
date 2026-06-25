@@ -57,3 +57,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * react-md-editor full-height fix. With height="100%" the editor container and
+ * its `-input` pane fill, but `.w-md-editor-text` relies on `min-height: 100%`,
+ * which browsers fail to resolve when the containing block's height is itself
+ * percentage-derived — so the editable area collapses to content height. Make
+ * the pane a flex column and let the text area grow to fill it. `flex: 1 0 auto`
+ * fills when the document is short and still expands for long documents so the
+ * `overflow: auto` pane keeps scrolling.
+ */
+.md-editor-fill .w-md-editor-area {
+  display: flex;
+  flex-direction: column;
+}
+.md-editor-fill .w-md-editor-text {
+  flex: 1 0 auto;
+}

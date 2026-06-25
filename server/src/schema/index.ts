@@ -1,41 +1,12 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { DB } from '@cubicecho/notes-db';
-import { mergeResolvers } from '@graphql-tools/merge';
-import { addResolversToSchema } from '@graphql-tools/schema';
-import { buildSchema } from '@vantreeseba/drizzle-graphql';
 import { applyPermissions } from '@vantreeseba/graphql-casl';
-import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
 import type { Resolvers } from '../__generated__/resolvers.ts';
 import { permissions } from '../middleware/permissions/index.ts';
-import { authResolvers } from './resolvers/auth.ts';
-import { noteResolvers } from './resolvers/notes.ts';
-import { orgResolvers } from './resolvers/orgs.ts';
+import { buildBaseSchema } from './base.ts';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const extensionSDL = fs.readFileSync(
-  path.resolve(__dirname, 'extensions.graphql'),
-  'utf-8',
-);
+export { buildBaseSchema };
 
 export function buildAppSchema(db: DB): GraphQLSchema {
-  const { schema: drizzleSchema } = buildSchema(db, {
-    singularTypes: true,
-    prefixes: {
-      insert: 'create',
-      update: 'update',
-      delete: 'delete',
-    },
-  });
-
-  const extended = extendSchema(drizzleSchema, parse(extensionSDL));
-
-  const withResolvers = addResolversToSchema({
-    schema: extended,
-    resolvers: mergeResolvers([authResolvers, noteResolvers, orgResolvers]),
-  });
-
-  return applyPermissions<Resolvers>(withResolvers, permissions);
+  return applyPermissions<Resolvers>(buildBaseSchema(db), permissions);
 }

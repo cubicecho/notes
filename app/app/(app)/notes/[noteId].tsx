@@ -5,9 +5,20 @@ import { Text, View } from 'react-native';
 
 export default function NotePage() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
-  const { notes } = useNotes();
+  const { notes, loading } = useNotes();
 
   const note = notes.find((n) => n.id === noteId);
+
+  // On first view (deep link / web refresh) the notes query is still in flight,
+  // so `note` is undefined even though it exists. Wait for the fetch before
+  // deciding the note is missing, otherwise we flash "Note not found."
+  if (!note && loading) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-muted-foreground text-sm">Loading…</Text>
+      </View>
+    );
+  }
 
   if (!note) {
     return (
@@ -19,7 +30,7 @@ export default function NotePage() {
 
   return (
     <View className="flex-1">
-      <MarkdownEditor note={note} />
+      <MarkdownEditor key={note.id} note={note} />
     </View>
   );
 }
