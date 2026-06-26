@@ -37,7 +37,7 @@ const ORG_NOTES = graphql(`
 `);
 
 const CREATE_NOTE = graphql(`
-  mutation CreateNote($userId: String!, $orgId: String) {
+  mutation CreateNote($userId: String!, $orgId: String!) {
     createNote(values: { userId: $userId, orgId: $orgId, title: "Untitled", content: "" }) {
       id
       title
@@ -62,8 +62,8 @@ const UPDATE_NOTE = graphql(`
 `);
 
 const DELETE_NOTE = graphql(`
-  mutation DeleteNote($id: String!) {
-    deleteNotes(where: { id: { eq: $id } }) {
+  mutation DeleteNote($where: NoteFilters!) {
+    deleteNotes(where: $where) {
       id
     }
   }
@@ -103,7 +103,7 @@ const NotesContext = createContext<NotesContextValue | null>(null);
 
 export function NotesProvider({ children }: { children: React.ReactNode }) {
   const { workspace } = useWorkspace();
-  const { user, loading: authLoading } = useAuth();
+  const { user, personalOrgId, loading: authLoading } = useAuth();
 
   const isOrg = workspace.type === 'org';
 
@@ -153,9 +153,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
 
   const createNote = useCallback(
     async (userId: string): Promise<Note> => {
-      const orgId = isOrg ? workspace.id : undefined;
+      // Every note lives in an org: the active org workspace, or the user's
+      // personal org for personal notes.
+      const orgId = isOrg ? workspace.id : personalOrgId;
+      if (!orgId) {
+        throw new Error('No org to create the note in');
+      }
       const { data } = await createNoteMut({
-        variables: { userId, orgId: orgId ?? null },
+        variables: { userId, orgId },
       });
       const n = data?.createNote;
       if (!n) throw new Error('Create note failed');
@@ -170,7 +175,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         updatedAt: n.updatedAt as string,
       };
     },
-    [isOrg, workspace, createNoteMut, refetch],
+    [isOrg, workspace, personalOrgId, createNoteMut, refetch],
   );
 
   const updateNote = useCallback(
@@ -189,10 +194,16 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
 
   const deleteNote = useCallback(
     async (id: string) => {
-      await deleteNoteMut({ variables: { id } });
+      // Scope the delete by the note's org so the server's CASL check (which
+      // reads orgId off the where clause) can authorize it.
+      const note = notes.find((n) => n.id === id);
+      const where = note?.orgId
+        ? { id: { eq: id }, orgId: { eq: note.orgId } }
+        : { id: { eq: id } };
+      await deleteNoteMut({ variables: { where } });
       refetch();
     },
-    [deleteNoteMut, refetch],
+    [deleteNoteMut, refetch, notes],
   );
 
   return (

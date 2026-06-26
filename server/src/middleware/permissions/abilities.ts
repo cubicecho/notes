@@ -53,14 +53,15 @@ export function defineAbilitiesFor(
   can(Actions.update, Subject.User, { id: userId });
 
   // ── Notes ──────────────────────────────────────────────────────────────
+  // Ownership is purely org-based. Personal notes live in the caller's personal
+  // org (an owned membership), so a single membership rule covers both personal
+  // and shared notes. `userId` is author metadata only and grants nothing.
   can(Actions.read, Subject.Note);
-  can(Actions.create, Subject.Note, { orgId: null });
   if (memberOrgIds.length > 0) {
     can(Actions.create, Subject.Note, { orgId: { $in: memberOrgIds } });
     can(Actions.update, Subject.Note, { orgId: { $in: memberOrgIds } });
+    can(Actions.delete, Subject.Note, { orgId: { $in: memberOrgIds } });
   }
-  can(Actions.update, Subject.Note, { userId });
-  cannot(Actions.delete, Subject.Note);
 
   // ── Orgs ───────────────────────────────────────────────────────────────
   can(Actions.read, Subject.Org);

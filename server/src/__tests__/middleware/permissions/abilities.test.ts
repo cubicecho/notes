@@ -47,15 +47,7 @@ describe('defineAbilitiesFor', () => {
   });
 
   describe('notes', () => {
-    it('can create personal notes (no orgId)', () => {
-      const ability = defineAbilitiesFor('u1', noOrgs);
-      assert.equal(
-        ability.can(Actions.create, typed('Note', { orgId: null })),
-        true,
-      );
-    });
-
-    it('cannot create org notes when not a member', () => {
+    it('cannot create notes when not in any org', () => {
       const ability = defineAbilitiesFor('u1', noOrgs);
       assert.equal(
         ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
@@ -63,22 +55,14 @@ describe('defineAbilitiesFor', () => {
       );
     });
 
-    it('can create org notes when a member', () => {
+    it('can create notes in member orgs', () => {
       const ability = defineAbilitiesFor('u1', member);
       assert.equal(
         ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
         true,
       );
-    });
-
-    it('can update own personal notes', () => {
-      const ability = defineAbilitiesFor('u1', noOrgs);
       assert.equal(
-        ability.can(Actions.update, typed('Note', { userId: 'u1' })),
-        true,
-      );
-      assert.equal(
-        ability.can(Actions.update, typed('Note', { userId: 'u2' })),
+        ability.can(Actions.create, typed('Note', { orgId: 'org2' })),
         false,
       );
     });
@@ -95,10 +79,14 @@ describe('defineAbilitiesFor', () => {
       );
     });
 
-    it('cannot delete notes', () => {
-      const ability = defineAbilitiesFor('u1', owner);
+    it('can delete notes in member orgs', () => {
+      const ability = defineAbilitiesFor('u1', member);
       assert.equal(
-        ability.can(Actions.delete, typed('Note', { userId: 'u1' })),
+        ability.can(Actions.delete, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'org2' })),
         false,
       );
     });

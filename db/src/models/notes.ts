@@ -7,7 +7,9 @@ export const notes = pgTable('notes', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  orgId: uuid('org_id').references(() => orgs.id, { onDelete: 'cascade' }),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgs.id, { onDelete: 'cascade' }),
   title: text('title').notNull().default('Untitled'),
   content: text('content').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),

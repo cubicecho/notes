@@ -20,6 +20,7 @@ import {
 import type {
   MutationCreateNoteArgs,
   MutationCreateOrgMemberArgs,
+  MutationDeleteNotesArgs,
   MutationDeleteOrgMembersArgs,
   MutationDeleteOrgsArgs,
   MutationUpdateNotesArgs,
@@ -82,13 +83,15 @@ export const permissions: PermissionsMap<Resolvers> = {
     // Notes
     createNotes: deny,
     createNote: canUser(create, Note, (args: MutationCreateNoteArgs) => ({
-      orgId: args.values.orgId ?? null,
+      orgId: args.values.orgId,
     })),
     updateNotes: canUser(update, Note, (args: MutationUpdateNotesArgs) => ({
       orgId: args.where?.orgId?.eq ?? undefined,
       userId: args.where?.userId?.eq ?? undefined,
     })),
-    deleteNotes: deny,
+    deleteNotes: canUser(del, Note, (args: MutationDeleteNotesArgs) => ({
+      orgId: args.where?.orgId?.eq ?? undefined,
+    })),
 
     // Orgs
     createOrgs: deny,

@@ -14,6 +14,11 @@ export const relations = defineRelations(
         from: r.users.id,
         to: r.orgMembers.userId,
       }),
+      personalOrg: r.one.orgs({
+        from: r.users.id,
+        to: r.orgs.personalForUserId,
+        optional: true,
+      }),
     },
     notes: {
       user: r.one.users({ from: r.notes.userId, to: r.users.id }),
