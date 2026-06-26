@@ -47,7 +47,14 @@ const { User, Note, Org, OrgMember } = Subject;
 const canUser = createCan<Context, AppSubjectMap>(
   async (ctx) => {
     const memberships = await ctx.getUserMemberships();
-    return defineAbilitiesFor(ctx.userId, memberships);
+    let personalOrgId: string | null = null;
+    if (ctx.userId) {
+      const personalOrg = await ctx.db.query.orgs.findFirst({
+        where: { personalForUserId: ctx.userId },
+      });
+      personalOrgId = personalOrg?.id ?? null;
+    }
+    return defineAbilitiesFor(ctx.userId, memberships, personalOrgId);
   },
   (ctx) => ctx.userId != null,
   typed,

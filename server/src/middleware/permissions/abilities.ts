@@ -33,6 +33,7 @@ export type AppAbility = GraphQLAbility<AppSubjectMap>;
 export function defineAbilitiesFor(
   userId: string | undefined,
   memberships: OrgMembership[],
+  personalOrgId?: string | null,
 ): AppAbility {
   const { can, cannot, build } = ability();
 
@@ -77,6 +78,18 @@ export function defineAbilitiesFor(
     can(Actions.create, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
     can(Actions.update, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
     can(Actions.delete, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
+  }
+
+  // ── Personal org ─────────────────────────────────────────────────────────
+  // The personal org is an invisible implementation detail: notes still live
+  // there, but it cannot be renamed, deleted, or shared with other members.
+  // These `cannot` rules override the owner `can` rules above.
+  if (personalOrgId) {
+    cannot(Actions.update, Subject.Org, { id: personalOrgId });
+    cannot(Actions.delete, Subject.Org, { id: personalOrgId });
+    cannot(Actions.create, Subject.OrgMember, { orgId: personalOrgId });
+    cannot(Actions.update, Subject.OrgMember, { orgId: personalOrgId });
+    cannot(Actions.delete, Subject.OrgMember, { orgId: personalOrgId });
   }
 
   return build();

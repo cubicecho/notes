@@ -182,4 +182,52 @@ describe('defineAbilitiesFor', () => {
       );
     });
   });
+
+  describe('personal org', () => {
+    const personalOnly = [{ orgId: 'personal1', role: 'owner' as const }];
+    const withShared = [
+      { orgId: 'personal1', role: 'owner' as const },
+      { orgId: 'shared1', role: 'owner' as const },
+    ];
+
+    it('cannot rename, delete, or share the personal org', () => {
+      const ability = defineAbilitiesFor('u1', personalOnly, 'personal1');
+      assert.equal(
+        ability.can(Actions.update, typed('Org', { id: 'personal1' })),
+        false,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Org', { id: 'personal1' })),
+        false,
+      );
+      assert.equal(
+        ability.can(Actions.create, typed('OrgMember', { orgId: 'personal1' })),
+        false,
+      );
+    });
+
+    it('can still create and delete notes in the personal org', () => {
+      const ability = defineAbilitiesFor('u1', personalOnly, 'personal1');
+      assert.equal(
+        ability.can(Actions.create, typed('Note', { orgId: 'personal1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'personal1' })),
+        true,
+      );
+    });
+
+    it('can still manage a separate shared org they own', () => {
+      const ability = defineAbilitiesFor('u1', withShared, 'personal1');
+      assert.equal(
+        ability.can(Actions.update, typed('Org', { id: 'shared1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Org', { id: 'shared1' })),
+        true,
+      );
+    });
+  });
 });

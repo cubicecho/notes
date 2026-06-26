@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
-import { notes, orgMembers, orgs, users } from '@cubicecho/notes-db';
+import {
+  notes,
+  orgMembers,
+  orgs,
+  provisionUser,
+  users,
+} from '@cubicecho/notes-db';
 import { graphql } from 'graphql';
 import { cleanDb, createTestContext, first } from '../../helpers/db.ts';
 
@@ -284,6 +290,25 @@ describe('permissions', () => {
         }`,
         variableValues: { orgId: org.id },
         contextValue: ctx.makeContext(userId1),
+      });
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
+    });
+  });
+
+  describe('personal org', () => {
+    it('denies deleting the caller personal org', async () => {
+      const { user, personalOrgId } = await provisionUser(ctx.db, {
+        email: 'carol@example.com',
+      });
+
+      const result = await graphql({
+        schema: ctx.schema,
+        source: `mutation($id: String!) {
+          deleteOrgs(where: { id: { eq: $id } }) { id }
+        }`,
+        variableValues: { id: personalOrgId },
+        contextValue: ctx.makeContext(user.id),
       });
       assert.ok(result.errors);
       assert.match(first(result.errors).message, /Forbidden/);

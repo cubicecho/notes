@@ -2,14 +2,16 @@
 
 ## Overview
 
-CubicEcho Notes is a web-first Markdown notes app. MVP stores notes in
-`localStorage`. The server and DB are scaffolded but not wired to the client yet.
+CubicEcho Notes is a web-first Markdown notes app. The client persists notes
+through the GraphQL server (Apollo Client → Apollo Server → Drizzle). Ownership
+is org-based — every note belongs to an org, and each user gets an invisible
+personal org on first login.
 
 | Package | Role |
 |---------|------|
 | `app/` | Expo 55 + React Native Web + Expo Router — the main client |
-| `server/` | Express + Apollo Server + GraphQL (scaffolded) |
-| `db/` | Drizzle ORM + PGLite (notes + users schema) |
+| `server/` | Express + Apollo Server + GraphQL (CASL permissions) |
+| `db/` | Drizzle ORM + PGLite (users, orgs, org_members, notes) |
 | `electron/` | Placeholder — will wrap `app/dist/` in a desktop shell |
 
 ---
@@ -41,7 +43,7 @@ app/
     │   ├── storage.ts              # localStorage wrapper (web only, safe on native)
     │   └── utils.ts                # cn() — clsx + tailwind-merge
     ├── context/
-    │   └── NotesContext.tsx        # Notes CRUD + localStorage persistence
+    │   └── NotesContext.tsx        # Notes CRUD via GraphQL (Apollo useQuery/useMutation)
     └── components/
         ├── ui/
         │   └── button.tsx          # shadcn Button (cva variants)
@@ -64,7 +66,7 @@ app/
 ### Data Flow (MVP)
 
 ```
-NotesProvider (localStorage)
+NotesProvider (GraphQL via Apollo)
   └── NotesList ──────────── reads notes[], navigates on select
   └── [noteId].tsx ────────── finds note by ID
       └── MarkdownEditor ─── calls updateNote() on every keystroke
@@ -84,11 +86,14 @@ db/
     ├── schema.ts          # Re-exports all models
     ├── relations.ts       # Drizzle relation definitions
     ├── migrate.ts         # CLI migration runner
+    ├── provision.ts       # provisionUser() — find-or-create user + personal org
     ├── seed.ts            # seedDemoUser(), seedDemoData()
     └── models/
         ├── index.ts
         ├── users.ts       # id, email, createdAt, updatedAt
-        └── notes.ts       # id, userId, title, content, createdAt, updatedAt
+        ├── orgs.ts        # id, name, personalForUserId, createdAt, updatedAt
+        ├── org_members.ts # orgId+userId composite PK, role
+        └── notes.ts       # id, userId, orgId, title, content, createdAt, updatedAt
 ```
 
 ### DB Schema
@@ -105,8 +110,8 @@ db/
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | defaultRandom() |
-| user_id | uuid FK → users.id | cascade delete |
-| org_id | uuid FK → orgs.id | nullable, cascade delete |
+| user_id | uuid FK → users.id | cascade delete, author |
+| org_id | uuid FK → orgs.id | notNull, cascade delete (owning org) |
 | title | text | default 'Untitled' |
 | content | text | default '' |
 | created_at | timestamp | defaultNow() |
@@ -117,6 +122,7 @@ db/
 |--------|------|-------|
 | id | uuid PK | defaultRandom() |
 | name | text | notNull |
+| personal_for_user_id | uuid FK → users.id | nullable, unique, cascade delete — set ⇒ this is that user's personal org |
 | created_at | timestamp | defaultNow() |
 | updated_at | timestamp | defaultNow() |
 
