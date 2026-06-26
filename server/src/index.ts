@@ -7,7 +7,7 @@ import { expressMiddleware } from '@as-integrations/express4';
 import { db } from '@cubicecho/notes-db';
 import cors from 'cors';
 import express from 'express';
-import type { Context } from './context.ts';
+import { type Context, createContext } from './context.ts';
 import { buildAppSchema } from './schema/index.ts';
 
 const schema = buildAppSchema(db);
@@ -33,29 +33,12 @@ app.use(
   }),
   express.json(),
   expressMiddleware(server, {
-    context: async ({ req }) => {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      const userId = token ?? DEMO_USER_ID;
-      let membershipsPromise:
-        | Promise<{ orgId: string; role: 'owner' | 'member' }[]>
-        | undefined;
-
-      return {
+    context: ({ req }) =>
+      createContext({
         db,
-        userId,
-        getUserMemberships: () => {
-          if (membershipsPromise === undefined) {
-            membershipsPromise = db.query.orgMembers
-              .findMany({ where: { userId } })
-              .then((ms: { orgId: string; role: 'owner' | 'member' }[]) =>
-                ms.map((m) => ({ orgId: m.orgId, role: m.role })),
-              );
-          }
-          // biome-ignore lint/style/noNonNullAssertion: assigned in the branch above
-          return membershipsPromise!;
-        },
-      };
-    },
+        authHeader: req.headers.authorization,
+        demoUserId: DEMO_USER_ID,
+      }),
   }),
 );
 

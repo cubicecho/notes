@@ -21,6 +21,7 @@ export async function createTestContext() {
     return {
       db,
       userId,
+      authKind: 'session',
       getUserMemberships: () => {
         if (membershipsPromise === undefined) {
           membershipsPromise = db.query.orgMembers

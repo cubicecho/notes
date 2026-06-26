@@ -34,6 +34,11 @@ export function defineAbilitiesFor(
   userId: string | undefined,
   memberships: OrgMembership[],
   personalOrgId?: string | null,
+  // When the caller authenticated with an API token, the actor is confined to
+  // its single org: it may not manage the user account or create new orgs
+  // (both escape the token's org scope). Org-level abilities below are already
+  // scoped because the token's memberships are filtered to that one org.
+  isApiToken = false,
 ): AppAbility {
   const { can, cannot, build } = ability();
 
@@ -51,7 +56,11 @@ export function defineAbilitiesFor(
   cannot(Actions.create, Subject.User);
   cannot(Actions.delete, Subject.User);
   can(Actions.read, Subject.User);
-  can(Actions.update, Subject.User, { id: userId });
+  // Account management is a session-actor privilege; API tokens cannot change
+  // the user they were minted by.
+  if (!isApiToken) {
+    can(Actions.update, Subject.User, { id: userId });
+  }
 
   // ── Notes ──────────────────────────────────────────────────────────────
   // Ownership is purely org-based. Personal notes live in the caller's personal
@@ -66,7 +75,11 @@ export function defineAbilitiesFor(
 
   // ── Orgs ───────────────────────────────────────────────────────────────
   can(Actions.read, Subject.Org);
-  can(Actions.create, Subject.Org);
+  // Creating a new org would produce a resource outside the token's single-org
+  // scope, so only session actors may do it.
+  if (!isApiToken) {
+    can(Actions.create, Subject.Org);
+  }
   if (ownerOrgIds.length > 0) {
     can(Actions.update, Subject.Org, { id: { $in: ownerOrgIds } });
     can(Actions.delete, Subject.Org, { id: { $in: ownerOrgIds } });

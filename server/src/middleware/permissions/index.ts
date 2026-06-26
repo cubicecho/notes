@@ -56,7 +56,12 @@ const canUser = createCan<Context, AppSubjectMap>(
       });
       personalOrgId = personalOrg?.id ?? null;
     }
-    return defineAbilitiesFor(ctx.userId, memberships, personalOrgId);
+    return defineAbilitiesFor(
+      ctx.userId,
+      memberships,
+      personalOrgId,
+      ctx.authKind === 'token',
+    );
   },
   (ctx) => ctx.userId != null,
   typed,

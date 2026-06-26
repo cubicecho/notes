@@ -230,4 +230,46 @@ describe('defineAbilitiesFor', () => {
       );
     });
   });
+
+  describe('api token actor (isApiToken=true)', () => {
+    const isApiToken = true;
+
+    it('can still manage notes and tokens within its org', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(
+        ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.create, typed('ApiToken', { orgId: 'org1' })),
+        true,
+      );
+    });
+
+    it('cannot mutate the user account', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(
+        ability.can(Actions.update, typed('User', { id: 'u1' })),
+        false,
+      );
+    });
+
+    it('cannot create a new org', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(ability.can(Actions.create, Subject.Org), false);
+    });
+
+    it('a session actor keeps both abilities', () => {
+      const ability = defineAbilitiesFor('u1', owner, null);
+      assert.equal(
+        ability.can(Actions.update, typed('User', { id: 'u1' })),
+        true,
+      );
+      assert.equal(ability.can(Actions.create, Subject.Org), true);
+    });
+  });
 });
