@@ -1,4 +1,5 @@
 import {
+  apiTokens,
   createInMemoryDb,
   notes,
   orgMembers,
@@ -41,6 +42,7 @@ export async function createTestContext() {
 export async function cleanDb(
   db: Awaited<ReturnType<typeof createTestContext>>['db'],
 ) {
+  await db.delete(apiTokens);
   await db.delete(orgMembers);
   await db.delete(notes);
   await db.delete(orgs);

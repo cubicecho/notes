@@ -80,6 +80,17 @@ export function defineAbilitiesFor(
     can(Actions.delete, Subject.OrgMember, { orgId: { $in: ownerOrgIds } });
   }
 
+  // ── API tokens ─────────────────────────────────────────────────────────
+  // Any member of an org may read and mint tokens for it — a token simply
+  // re-exposes the creator's own live access to that one org. `delete` here is
+  // a coarse gate (member of *some* org); the precise per-token org check runs
+  // in the revokeApiToken resolver, which knows the token's org after lookup.
+  if (memberOrgIds.length > 0) {
+    can(Actions.read, Subject.ApiToken, { orgId: { $in: memberOrgIds } });
+    can(Actions.create, Subject.ApiToken, { orgId: { $in: memberOrgIds } });
+    can(Actions.delete, Subject.ApiToken, { orgId: { $in: memberOrgIds } });
+  }
+
   // ── Personal org ─────────────────────────────────────────────────────────
   // The personal org is an invisible implementation detail: notes still live
   // there, but it cannot be renamed, deleted, or shared with other members.

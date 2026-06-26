@@ -18,6 +18,7 @@ import {
   deny,
 } from '@vantreeseba/graphql-casl';
 import type {
+  MutationCreateApiTokenArgs,
   MutationCreateNoteArgs,
   MutationCreateOrgMemberArgs,
   MutationDeleteNotesArgs,
@@ -27,6 +28,7 @@ import type {
   MutationUpdateOrgMembersArgs,
   MutationUpdateOrgsArgs,
   MutationUpdateUsersArgs,
+  QueryApiTokensArgs,
   Resolvers,
 } from '../../__generated__/resolvers.ts';
 import type { Context } from '../../context.ts';
@@ -39,7 +41,7 @@ import {
 } from './abilities.ts';
 
 const { create, read, update, delete: del } = Actions;
-const { User, Note, Org, OrgMember } = Subject;
+const { User, Note, Org, OrgMember, ApiToken } = Subject;
 
 // requireCan is bound to this app's context shape, subject map, and typed()
 // subject constructor. Any project using the library creates its own instance
@@ -74,6 +76,9 @@ export const permissions: PermissionsMap<Resolvers> = {
     myNotes: canUser(read, Note),
     myOrgs: canUser(read, Org),
     me: canUser(read, User),
+    apiTokens: canUser(read, ApiToken, (args: QueryApiTokensArgs) => ({
+      orgId: args.orgId,
+    })),
   },
   Mutation: {
     // Auth — public, no token required
@@ -133,5 +138,17 @@ export const permissions: PermissionsMap<Resolvers> = {
         orgId: args.where?.orgId?.eq ?? undefined,
       }),
     ),
+
+    // API tokens — create is scoped to the target org; revoke is coarsely gated
+    // here (manage tokens in some org) and precisely checked in the resolver,
+    // which only learns the token's org after looking it up by id.
+    createApiToken: canUser(
+      create,
+      ApiToken,
+      (args: MutationCreateApiTokenArgs) => ({
+        orgId: args.orgId,
+      }),
+    ),
+    revokeApiToken: canUser(del, ApiToken),
   },
 };
