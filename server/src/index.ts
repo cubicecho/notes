@@ -8,6 +8,7 @@ import { db } from '@cubicecho/notes-db';
 import cors from 'cors';
 import express from 'express';
 import { type Context, createContext } from './context.ts';
+import { createMcpHandler } from './mcp/index.ts';
 import { buildAppSchema } from './schema/index.ts';
 
 const schema = buildAppSchema(db);
@@ -40,6 +41,19 @@ app.use(
         demoUserId: DEMO_USER_ID,
       }),
   }),
+);
+
+// MCP endpoint: the GraphQL API exposed as Model Context Protocol tools. It
+// runs against the same permission-wrapped schema and the same createContext as
+// /graphql, so dual auth (session or org-scoped API token) and every CASL rule
+// apply identically here.
+app.use(
+  '/mcp',
+  cors<cors.CorsRequest>({
+    origin: process.env.APP_URL ?? 'http://localhost:8081',
+  }),
+  express.json(),
+  createMcpHandler({ db, schema, demoUserId: DEMO_USER_ID }),
 );
 
 // Serve the built Expo web client (app/dist) in production so the API and the
