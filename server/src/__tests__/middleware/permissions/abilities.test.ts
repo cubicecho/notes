@@ -47,15 +47,7 @@ describe('defineAbilitiesFor', () => {
   });
 
   describe('notes', () => {
-    it('can create personal notes (no orgId)', () => {
-      const ability = defineAbilitiesFor('u1', noOrgs);
-      assert.equal(
-        ability.can(Actions.create, typed('Note', { orgId: null })),
-        true,
-      );
-    });
-
-    it('cannot create org notes when not a member', () => {
+    it('cannot create notes when not in any org', () => {
       const ability = defineAbilitiesFor('u1', noOrgs);
       assert.equal(
         ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
@@ -63,22 +55,14 @@ describe('defineAbilitiesFor', () => {
       );
     });
 
-    it('can create org notes when a member', () => {
+    it('can create notes in member orgs', () => {
       const ability = defineAbilitiesFor('u1', member);
       assert.equal(
         ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
         true,
       );
-    });
-
-    it('can update own personal notes', () => {
-      const ability = defineAbilitiesFor('u1', noOrgs);
       assert.equal(
-        ability.can(Actions.update, typed('Note', { userId: 'u1' })),
-        true,
-      );
-      assert.equal(
-        ability.can(Actions.update, typed('Note', { userId: 'u2' })),
+        ability.can(Actions.create, typed('Note', { orgId: 'org2' })),
         false,
       );
     });
@@ -95,10 +79,14 @@ describe('defineAbilitiesFor', () => {
       );
     });
 
-    it('cannot delete notes', () => {
-      const ability = defineAbilitiesFor('u1', owner);
+    it('can delete notes in member orgs', () => {
+      const ability = defineAbilitiesFor('u1', member);
       assert.equal(
-        ability.can(Actions.delete, typed('Note', { userId: 'u1' })),
+        ability.can(Actions.delete, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'org2' })),
         false,
       );
     });
@@ -192,6 +180,96 @@ describe('defineAbilitiesFor', () => {
         ability.can(Actions.create, typed('OrgMember', { orgId: 'org2' })),
         false,
       );
+    });
+  });
+
+  describe('personal org', () => {
+    const personalOnly = [{ orgId: 'personal1', role: 'owner' as const }];
+    const withShared = [
+      { orgId: 'personal1', role: 'owner' as const },
+      { orgId: 'shared1', role: 'owner' as const },
+    ];
+
+    it('cannot rename, delete, or share the personal org', () => {
+      const ability = defineAbilitiesFor('u1', personalOnly, 'personal1');
+      assert.equal(
+        ability.can(Actions.update, typed('Org', { id: 'personal1' })),
+        false,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Org', { id: 'personal1' })),
+        false,
+      );
+      assert.equal(
+        ability.can(Actions.create, typed('OrgMember', { orgId: 'personal1' })),
+        false,
+      );
+    });
+
+    it('can still create and delete notes in the personal org', () => {
+      const ability = defineAbilitiesFor('u1', personalOnly, 'personal1');
+      assert.equal(
+        ability.can(Actions.create, typed('Note', { orgId: 'personal1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'personal1' })),
+        true,
+      );
+    });
+
+    it('can still manage a separate shared org they own', () => {
+      const ability = defineAbilitiesFor('u1', withShared, 'personal1');
+      assert.equal(
+        ability.can(Actions.update, typed('Org', { id: 'shared1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Org', { id: 'shared1' })),
+        true,
+      );
+    });
+  });
+
+  describe('api token actor (isApiToken=true)', () => {
+    const isApiToken = true;
+
+    it('can still manage notes and tokens within its org', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(
+        ability.can(Actions.create, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.delete, typed('Note', { orgId: 'org1' })),
+        true,
+      );
+      assert.equal(
+        ability.can(Actions.create, typed('ApiToken', { orgId: 'org1' })),
+        true,
+      );
+    });
+
+    it('cannot mutate the user account', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(
+        ability.can(Actions.update, typed('User', { id: 'u1' })),
+        false,
+      );
+    });
+
+    it('cannot create a new org', () => {
+      const ability = defineAbilitiesFor('u1', owner, null, isApiToken);
+      assert.equal(ability.can(Actions.create, Subject.Org), false);
+    });
+
+    it('a session actor keeps both abilities', () => {
+      const ability = defineAbilitiesFor('u1', owner, null);
+      assert.equal(
+        ability.can(Actions.update, typed('User', { id: 'u1' })),
+        true,
+      );
+      assert.equal(ability.can(Actions.create, Subject.Org), true);
     });
   });
 });

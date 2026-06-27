@@ -40,6 +40,7 @@ export type DB = typeof db;
 
 export { schema };
 export * from './schema.ts';
+export { provisionUser } from './provision.ts';
 
 export async function createInMemoryDb() {
   const { PGlite } = await import('@electric-sql/pglite');

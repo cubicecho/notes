@@ -20,11 +20,22 @@ export const orgResolvers: {
         return [];
       }
 
+      // The caller's personal org is an internal home for personal notes — it
+      // is never surfaced as a selectable workspace.
+      const personalOrg = await context.db.query.orgs.findFirst({
+        where: { personalForUserId: context.userId },
+      });
+      const visibleOrgIds = orgIds.filter((id) => id !== personalOrg?.id);
+
+      if (visibleOrgIds.length === 0) {
+        return [];
+      }
+
       return delegateToSchema({
         schema: info.schema,
         operation: OperationTypeNode.QUERY,
         fieldName: 'org',
-        args: { where: { id: { inArray: orgIds } } },
+        args: { where: { id: { inArray: visibleOrgIds } } },
         context,
         info,
       });

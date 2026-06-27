@@ -15,11 +15,21 @@ export type NewNote = typeof notes.$inferInsert;
 | Table | Key columns |
 |-------|------------|
 | `users` | id, email |
-| `notes` | id, userId (FK→users), orgId (nullable FK→orgs), title, content |
-| `orgs` | id, name |
+| `notes` | id, userId (FK→users, author), orgId (NOT NULL FK→orgs), title, content |
+| `orgs` | id, name, personalForUserId (nullable unique FK→users, cascade) |
 | `org_members` | orgId+userId (composite PK), role (owner\|member) |
 
-A note with `orgId = null` is personal (owned by the user). A note with `orgId` set belongs to that org and is visible to all org members.
+**Ownership is org-based.** Every note belongs to an org via a required `orgId`;
+`userId` is *author* metadata only and grants no permissions. On first
+login/creation each user is provisioned a **personal org** (`name: 'Personal'`,
+`personalForUserId = user.id`, with an `owner` membership) — see
+`provisionUser` in `db/src/provision.ts`. Personal notes live in that personal
+org, so a single org-membership rule covers both personal and shared notes.
+
+The personal org is an invisible implementation detail: it is hidden from
+`myOrgs`, and CASL blocks renaming, deleting, or adding members to it. Because
+`personalForUserId` cascades, deleting a user deletes their personal org, which
+in turn cascades to its notes and memberships.
 
 ## Dual-Backend Connection
 
@@ -43,29 +53,35 @@ const db = await createInMemoryDb(); // new PGlite() + migrate
 
 ```typescript
 import { db } from '@cubicecho/notes-db';
-import { eq, or, inArray, desc } from 'drizzle-orm';
-import { notes, orgMembers } from '@cubicecho/notes-db/schema';
+import { eq, inArray, desc } from 'drizzle-orm';
+import { notes, orgMembers, orgs } from '@cubicecho/notes-db/schema';
 
 // Find one
-const note = await db.query.notes.findFirst({
-  where: { id: someId, userId: context.userId },
-});
+const note = await db.query.notes.findFirst({ where: { id: someId } });
 
-// List all for user + org notes
+// The caller's personal-org notes (what `myNotes` returns)
+const personalOrg = await db.query.orgs.findFirst({
+  where: { personalForUserId: context.userId },
+});
+const myNotes = personalOrg
+  ? await db.select().from(notes)
+      .where(eq(notes.orgId, personalOrg.id))
+      .orderBy(desc(notes.updatedAt))
+  : [];
+
+// All notes across every org the user belongs to
 const memberships = await db.query.orgMembers.findMany({
   where: { userId: context.userId },
 });
 const orgIds = memberships.map((m) => m.orgId);
-const myNotes = orgIds.length > 0
+const orgNotes = orgIds.length > 0
   ? await db.select().from(notes)
-      .where(or(eq(notes.userId, context.userId), inArray(notes.orgId, orgIds)))
+      .where(inArray(notes.orgId, orgIds))
       .orderBy(desc(notes.updatedAt))
-  : await db.select().from(notes)
-      .where(eq(notes.userId, context.userId))
-      .orderBy(desc(notes.updatedAt));
+  : [];
 
-// Insert
-const [created] = await db.insert(notes).values({ userId, title, content }).returning();
+// Insert (orgId is required; userId records the author)
+const [created] = await db.insert(notes).values({ userId, orgId, title, content }).returning();
 
 // Update
 await db.update(notes)

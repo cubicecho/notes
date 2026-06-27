@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
-import { orgMembers, orgs, users } from '@cubicecho/notes-db';
+import { orgMembers, orgs, provisionUser, users } from '@cubicecho/notes-db';
 import { graphql } from 'graphql';
 import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
@@ -85,6 +85,35 @@ describe('orgs resolvers', () => {
       assert.equal(result.errors, undefined);
       const myOrgs = result.data?.myOrgs as Array<{ name: string }>;
       assert.deepEqual(myOrgs.map((o) => o.name).sort(), ['Org A', 'Org B']);
+    });
+
+    it('excludes the caller personal org', async () => {
+      const { user, personalOrgId } = await provisionUser(ctx.db, {
+        email: 'carol@example.com',
+      });
+      const shared = first(
+        await ctx.db.insert(orgs).values({ name: 'Shared' }).returning(),
+      );
+      await ctx.db
+        .insert(orgMembers)
+        .values({ orgId: shared.id, userId: user.id, role: 'owner' });
+
+      const result = await graphql({
+        schema: ctx.schema,
+        source: 'query { myOrgs { id name } }',
+        contextValue: ctx.makeContext(user.id),
+      });
+
+      assert.equal(result.errors, undefined);
+      const myOrgs = result.data?.myOrgs as Array<{ id: string; name: string }>;
+      assert.deepEqual(
+        myOrgs.map((o) => o.name),
+        ['Shared'],
+      );
+      assert.equal(
+        myOrgs.some((o) => o.id === personalOrgId),
+        false,
+      );
     });
 
     it('returns error when not authenticated', async () => {

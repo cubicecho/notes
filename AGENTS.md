@@ -3,9 +3,11 @@
 ## Project Overview
 
 CubicEcho Notes is an open-source, web-first Markdown notes app built with Expo.
-Notes are stored locally in `localStorage` for the MVP; the server and database
-are scaffolded but not wired up. Future iterations add Electron (disk storage)
-and a GraphQL server (multi-device sync).
+Notes are persisted through the GraphQL server (Apollo Client → Apollo Server →
+Drizzle/Postgres). Ownership is **org-based**: every note belongs to an org, and
+each user gets an invisible **personal org** on first login that holds their
+personal notes (see [`.agents/db-patterns.md`](.agents/db-patterns.md)). Future
+iterations add Electron (disk storage) and multi-device sync.
 
 Monorepo: npm workspaces with four packages — `app/` (Expo + React Native Web),
 `server/` (Express + Apollo), `db/` (Drizzle + PGLite), `electron/` (placeholder).
@@ -17,8 +19,8 @@ Monorepo: npm workspaces with four packages — `app/` (Expo + React Native Web)
 | Frontend | Expo 55, React 19, Expo Router, NativeWind (Tailwind), Apollo Client |
 | Editor   | @uiw/react-md-editor (split pane, web only for MVP) |
 | UI       | shadcn/ui primitives, Radix UI, Tailwind CSS |
-| State    | React Context + useReducer + localStorage (MVP) |
-| API      | Apollo Server 5, Express 4, GraphQL (scaffolded) |
+| State    | React Context + Apollo Client cache |
+| API      | Apollo Server 5, Express 4, GraphQL |
 | Database | Drizzle ORM, PGLite (embedded Postgres) |
 | Testing  | node:test (`node --test`, native TS via `--experimental-strip-types`) |
 | Linting  | Biome |
@@ -106,6 +108,9 @@ if (!user) {
 ```
 
 **Guard clause order (server resolvers) — auth → existence → ownership:**
+Ownership is org-based: check org membership, not `note.userId` (author only).
+Most CRUD authorization is enforced declaratively by CASL in
+`middleware/permissions/`; hand-write guards only in custom resolvers.
 ```typescript
 if (!context.userId) {
   throw new Error('Not authenticated');
@@ -114,7 +119,10 @@ const note = await context.db.query.notes.findFirst({ where: { id: args.id } });
 if (!note) {
   throw new Error(`Note ${args.id} not found`);
 }
-if (note.userId !== context.userId) {
+const membership = await context.db.query.orgMembers.findFirst({
+  where: { orgId: note.orgId, userId: context.userId },
+});
+if (!membership) {
   throw new Error('Forbidden');
 }
 ```
@@ -142,7 +150,7 @@ Always add new `.agents/` files to the reference list below.
 ## Agent Reference Files
 
 - [`.agents/project-structure.md`](.agents/project-structure.md) — Full directory tree, DB schema, GraphQL operations, client route table
-- [`.agents/client-patterns.md`](.agents/client-patterns.md) — Expo Router, NoteContext, localStorage, MarkdownEditor, NativeWind patterns
+- [`.agents/client-patterns.md`](.agents/client-patterns.md) — Expo Router, NotesContext (GraphQL), AuthContext, MarkdownEditor, NativeWind patterns
 - [`.agents/db-patterns.md`](.agents/db-patterns.md) — Drizzle schema, PGLite dual-backend, query patterns, migrations
 - [`.agents/server-patterns.md`](.agents/server-patterns.md) — Apollo Server, resolver authoring, auth chain, codegen pipeline
 - [`.agents/todo.md`](.agents/todo.md) — Open features, known issues, deferred work

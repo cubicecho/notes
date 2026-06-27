@@ -7,6 +7,7 @@ import { addResolversToSchema } from '@graphql-tools/schema';
 import { buildSchema } from '@vantreeseba/drizzle-graphql';
 import { extendSchema, parse } from 'graphql';
 import type { GraphQLSchema } from 'graphql';
+import { apiTokenResolvers } from './resolvers/api-tokens.ts';
 import { authResolvers } from './resolvers/auth.ts';
 import { noteResolvers } from './resolvers/notes.ts';
 import { orgResolvers } from './resolvers/orgs.ts';
@@ -37,6 +38,11 @@ export function buildBaseSchema(db: DB): GraphQLSchema {
 
   return addResolversToSchema({
     schema: extended,
-    resolvers: mergeResolvers([authResolvers, noteResolvers, orgResolvers]),
+    resolvers: mergeResolvers([
+      authResolvers,
+      noteResolvers,
+      orgResolvers,
+      apiTokenResolvers,
+    ]),
   });
 }

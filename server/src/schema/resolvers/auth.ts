@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { magicLinks, users } from '@cubicecho/notes-db';
+import { magicLinks, provisionUser } from '@cubicecho/notes-db';
 import { eq } from 'drizzle-orm';
 import type {
   MutationResolvers,
@@ -17,8 +17,7 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:8081';
 // the only user and can copy the link from the login screen. Never enable this
 // on a publicly reachable instance: it hands out login links to anyone who
 // knows an email address.
-const EXPOSE_MAGIC_LINK =
-  IS_DEV || process.env.EXPOSE_MAGIC_LINK === 'true';
+const EXPOSE_MAGIC_LINK = IS_DEV || process.env.EXPOSE_MAGIC_LINK === 'true';
 
 export const authResolvers: {
   Query: QueryResolvers;
@@ -37,11 +36,9 @@ export const authResolvers: {
     requestMagicLink: async (_parent, args, context) => {
       const email = args.email.toLowerCase().trim();
 
-      // Find or create user
-      let user = await context.db.query.users.findFirst({ where: { email } });
-      if (!user) {
-        [user] = await context.db.insert(users).values({ email }).returning();
-      }
+      // Find or create the user along with their personal org (idempotent —
+      // also self-heals a missing personal org on any subsequent login).
+      await provisionUser(context.db, { email });
 
       // Generate token and expiry
       const token = crypto.randomBytes(32).toString('hex');

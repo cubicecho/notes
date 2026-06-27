@@ -32,8 +32,15 @@ The auto-generated CRUD from drizzle-graphql handles basic operations
 - Same pattern for `user`, `org`, `orgMember`
 
 Custom resolvers use `delegateToSchema` to forward to auto-generated fields:
-- `myNotes`, `myOrgs` (auth-scoped queries)
+- `myNotes` — the caller's **personal-org** notes (looks up the org via
+  `personalForUserId`, then delegates to `note` filtered by that `orgId`)
+- `myOrgs` — the caller's orgs **excluding** their invisible personal org
 - `createOrg` (create + add caller as owner — can't delegate to itself)
+
+User provisioning lives in `db/src/provision.ts` (`provisionUser`): on
+login/creation it find-or-creates the user plus their personal org and `owner`
+membership in a transaction (idempotent). `requestMagicLink` calls it; tests and
+the seed reuse it.
 
 ## Permissions
 
@@ -69,9 +76,13 @@ generated `Resolvers` type by excluding root operations (via `OperationTypeNode`
 **`SubjectMap<TResolvers, TResolversTypes>`** — maps each subject name to `Partial<ModelType>`
 via `ResolversTypes`. Requires `useIndexSignature: false` in `codegen.server.ts` (set).
 
-**`defineAbilitiesFor(userId, memberships)`** — builds a per-request CASL `MongoAbility`
-with MongoDB-style conditions (`{ id: userId }`, `{ orgId: { $in: ownerOrgIds } }`).
-Subject type detection uses `__typename` via `abilityOptions.detectSubjectType`.
+**`defineAbilitiesFor(userId, memberships, personalOrgId?)`** — builds a per-request CASL
+`MongoAbility` with MongoDB-style conditions (`{ id: userId }`, `{ orgId: { $in: ownerOrgIds } }`).
+Note authorization is purely org-based (`{ orgId: { $in: memberOrgIds } }` for
+create/update/delete); `userId` grants nothing. The optional `personalOrgId`
+adds `cannot` rules that block renaming/deleting/sharing the caller's personal
+org (these override the owner `can` rules). Subject type detection uses
+`__typename` via `abilityOptions.detectSubjectType`.
 
 **`createRequireCan`** — generic factory; the instance in `index.ts` is bound to `Context`
 and this app's ability builder. Any project creates its own instance.

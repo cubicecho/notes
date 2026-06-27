@@ -10,15 +10,24 @@ export const noteResolvers: {
   Mutation: MutationResolvers;
 } = {
   Query: {
-    myNotes: (_parent, _args, context, info) =>
-      delegateToSchema({
+    // Personal notes = notes in the caller's personal org.
+    myNotes: async (_parent, _args, context, info) => {
+      const personalOrg = await context.db.query.orgs.findFirst({
+        where: { personalForUserId: context.userId },
+      });
+      if (!personalOrg) {
+        return [];
+      }
+
+      return delegateToSchema({
         schema: info.schema,
         operation: OperationTypeNode.QUERY,
         fieldName: 'note',
-        args: { where: { userId: { eq: context.userId } } },
+        args: { where: { orgId: { eq: personalOrg.id } } },
         context,
         info,
-      }),
+      });
+    },
   },
   Mutation: {},
 };

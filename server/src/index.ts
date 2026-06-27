@@ -7,7 +7,8 @@ import { expressMiddleware } from '@as-integrations/express4';
 import { db } from '@cubicecho/notes-db';
 import cors from 'cors';
 import express from 'express';
-import type { Context } from './context.ts';
+import { type Context, createContext } from './context.ts';
+import { createMcpHttpHandler } from './mcp.ts';
 import { buildAppSchema } from './schema/index.ts';
 
 const schema = buildAppSchema(db);
@@ -33,30 +34,29 @@ app.use(
   }),
   express.json(),
   expressMiddleware(server, {
-    context: async ({ req }) => {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      const userId = token ?? DEMO_USER_ID;
-      let membershipsPromise:
-        | Promise<{ orgId: string; role: 'owner' | 'member' }[]>
-        | undefined;
-
-      return {
+    context: ({ req }) =>
+      createContext({
         db,
-        userId,
-        getUserMemberships: () => {
-          if (membershipsPromise === undefined) {
-            membershipsPromise = db.query.orgMembers
-              .findMany({ where: { userId } })
-              .then((ms: { orgId: string; role: 'owner' | 'member' }[]) =>
-                ms.map((m) => ({ orgId: m.orgId, role: m.role })),
-              );
-          }
-          // biome-ignore lint/style/noNonNullAssertion: assigned in the branch above
-          return membershipsPromise!;
-        },
-      };
-    },
+        authHeader: req.headers.authorization,
+        demoUserId: DEMO_USER_ID,
+      }),
   }),
+);
+
+// MCP endpoint: the GraphQL API exposed as Model Context Protocol tools (see
+// ./mcp.ts — it runs against the permission-wrapped schema with the same
+// createContext as /graphql, so dual auth and every CASL rule apply identically).
+//
+// Mounted with app.use (not app.post) so the cors middleware also handles the
+// CORS preflight OPTIONS request and, in production, non-POST methods reach the
+// transport rather than the SPA catch-all below — matching the /graphql mount.
+app.use(
+  '/mcp',
+  cors<cors.CorsRequest>({
+    origin: process.env.APP_URL ?? 'http://localhost:8081',
+  }),
+  express.json(),
+  createMcpHttpHandler({ db, demoUserId: DEMO_USER_ID }),
 );
 
 // Serve the built Expo web client (app/dist) in production so the API and the

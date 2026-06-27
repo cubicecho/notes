@@ -9,6 +9,9 @@ const ME_QUERY = graphql(`
     me {
       id
       email
+      personalOrg {
+        id
+      }
     }
   }
 `);
@@ -41,6 +44,8 @@ interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null;
+  /** The caller's personal org id — owns their personal notes. */
+  personalOrgId: string | null;
   loading: boolean;
   requestMagicLink: (email: string) => Promise<{ devLink?: string | null }>;
   verifyMagicLink: (token: string) => Promise<void>;
@@ -118,10 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loading = !tokenLoaded || meLoading;
+  const personalOrgId = data?.me?.personalOrg?.id ?? null;
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, requestMagicLink, verifyMagicLink, signOut }}
+      value={{
+        user,
+        personalOrgId,
+        loading,
+        requestMagicLink,
+        verifyMagicLink,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

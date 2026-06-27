@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
-import { notes, orgMembers, orgs, users } from '@cubicecho/notes-db';
+import {
+  notes,
+  orgMembers,
+  orgs,
+  provisionUser,
+  users,
+} from '@cubicecho/notes-db';
 import { graphql } from 'graphql';
 import { cleanDb, createTestContext, first } from '../../helpers/db.ts';
 
@@ -193,32 +199,70 @@ describe('permissions', () => {
   });
 
   describe('notes', () => {
+    let orgId: string;
+
+    beforeEach(async () => {
+      orgId = first(
+        await ctx.db.insert(orgs).values({ name: 'Notes Org' }).returning(),
+      ).id;
+      await ctx.db
+        .insert(orgMembers)
+        .values({ orgId, userId: userId1, role: 'owner' });
+    });
+
     it('denies createNotes (bulk)', async () => {
       const result = await graphql({
         schema: ctx.schema,
-        source: `mutation($userId: String!) {
-          createNotes(values: [{ userId: $userId, title: "Bulk" }]) { id }
+        source: `mutation($userId: String!, $orgId: String!) {
+          createNotes(values: [{ userId: $userId, orgId: $orgId, title: "Bulk" }]) { id }
         }`,
-        variableValues: { userId: userId1 },
+        variableValues: { userId: userId1, orgId },
         contextValue: ctx.makeContext(userId1),
       });
       assert.ok(result.errors);
       assert.match(first(result.errors).message, /Forbidden/);
     });
 
-    it('denies deleteNotes', async () => {
+    it('allows deleteNotes for notes in a member org', async () => {
       const note = first(
         await ctx.db
           .insert(notes)
-          .values({ userId: userId1, title: 'Mine', content: '' })
+          .values({ userId: userId1, orgId, title: 'Mine', content: '' })
           .returning(),
       );
       const result = await graphql({
         schema: ctx.schema,
-        source: `mutation($id: String!) {
-          deleteNotes(where: { id: { eq: $id } }) { id }
+        source: `mutation($orgId: String!) {
+          deleteNotes(where: { orgId: { eq: $orgId } }) { id }
         }`,
-        variableValues: { id: note.id },
+        variableValues: { orgId },
+        contextValue: ctx.makeContext(userId1),
+      });
+      assert.equal(result.errors, undefined);
+      const deleted = result.data?.deleteNotes as Array<{ id: string }>;
+      assert.equal(first(deleted).id, note.id);
+    });
+
+    it('denies deleteNotes for notes in a non-member org', async () => {
+      const otherOrg = first(
+        await ctx.db.insert(orgs).values({ name: 'Other' }).returning(),
+      );
+      await ctx.db
+        .insert(orgMembers)
+        .values({ orgId: otherOrg.id, userId: userId2, role: 'owner' });
+      await ctx.db.insert(notes).values({
+        userId: userId2,
+        orgId: otherOrg.id,
+        title: 'Secret',
+        content: '',
+      });
+
+      const result = await graphql({
+        schema: ctx.schema,
+        source: `mutation($orgId: String!) {
+          deleteNotes(where: { orgId: { eq: $orgId } }) { id }
+        }`,
+        variableValues: { orgId: otherOrg.id },
         contextValue: ctx.makeContext(userId1),
       });
       assert.ok(result.errors);
@@ -246,6 +290,25 @@ describe('permissions', () => {
         }`,
         variableValues: { orgId: org.id },
         contextValue: ctx.makeContext(userId1),
+      });
+      assert.ok(result.errors);
+      assert.match(first(result.errors).message, /Forbidden/);
+    });
+  });
+
+  describe('personal org', () => {
+    it('denies deleting the caller personal org', async () => {
+      const { user, personalOrgId } = await provisionUser(ctx.db, {
+        email: 'carol@example.com',
+      });
+
+      const result = await graphql({
+        schema: ctx.schema,
+        source: `mutation($id: String!) {
+          deleteOrgs(where: { id: { eq: $id } }) { id }
+        }`,
+        variableValues: { id: personalOrgId },
+        contextValue: ctx.makeContext(user.id),
       });
       assert.ok(result.errors);
       assert.match(first(result.errors).message, /Forbidden/);

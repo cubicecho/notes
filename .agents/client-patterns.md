@@ -37,34 +37,42 @@ return <NativeLayout />;
 
 ## NotesContext
 
-All note CRUD lives in `src/context/NotesContext.tsx`. Backed by localStorage
-on web. Import the hook anywhere inside `<NotesProvider>`:
+All note CRUD lives in `src/context/NotesContext.tsx`. Backed by the GraphQL
+server via Apollo (`useQuery`/`useMutation`), scoped to the active workspace:
+the personal workspace queries `myNotes` (the user's personal org), an org
+workspace queries `note(where: { orgId })`. CRUD calls are `async`. Import the
+hook anywhere inside `<NotesProvider>`:
 
 ```tsx
 import { useNotes } from '@/context/NotesContext';
 
-const { notes, createNote, updateNote, deleteNote } = useNotes();
+const { notes, loading, createNote, updateNote, deleteNote } = useNotes();
 
-// Create a new note and navigate to it
-const note = createNote();           // returns the new Note with id
+// Create a new note and navigate to it. Pass the author userId; the note's org
+// is chosen automatically (active org workspace, or the user's personal org).
+const note = await createNote(user.id);
 router.push(`/(app)/notes/${note.id}`);
 
 // Update content (title is auto-extracted from first heading)
-updateNote(note.id, { content: '# Hello\n\nWorld' });
+await updateNote(note.id, { content: '# Hello\n\nWorld' });
 
 // Delete
-deleteNote(note.id);
+await deleteNote(note.id);
 ```
 
-localStorage key: `cubicecho_notes` — stores `Note[]` as JSON.
+Mutations scope their `where` clause by `orgId` so the server's CASL check
+(which reads `orgId` off the where clause) can authorize them. Queries skip
+until auth has resolved (`!authLoading && user`) so the request carries a token.
 
 ## Note Interface
 
 ```typescript
 interface Note {
-  id: string;           // crypto.randomUUID()
+  id: string;
   title: string;        // extracted from first heading or first line
   content: string;      // raw Markdown
+  userId: string;       // author
+  orgId?: string | null; // owning org (personal org for personal notes)
   createdAt: string;    // ISO 8601
   updatedAt: string;    // ISO 8601 — updated on every content change
 }
@@ -100,11 +108,13 @@ Dark mode: add `dark` class to `<html>` (web). NativeWind handles native.
 ## Apollo Client
 
 Configured in `src/apollo-client.ts`. Points at `http://localhost:4000/graphql`.
-For MVP, the client does **not** query the server — all data comes from
-`NotesContext` + localStorage. The Apollo setup is ready for when the server is
-wired up.
+`NotesContext` reads and writes through it (`myNotes`/`note` queries,
+`createNote`/`updateNotes`/`deleteNotes` mutations).
 
-Auth token is the `DEMO_USER_ID` constant (no login flow in MVP).
+Auth flows through `AuthContext` (magic-link login). The bearer token is loaded
+from storage asynchronously, so queries that depend on it skip until auth
+resolves. `AuthContext` also exposes `personalOrgId` (from `me { personalOrg { id } }`),
+which `NotesContext` uses as the target org for personal notes.
 
 ## shadcn UI Components
 

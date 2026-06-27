@@ -7,6 +7,9 @@ extend type Query {
 
   """Returns the currently authenticated user."""
   me: User
+
+  """API tokens for the given org. Caller must be a member of that org."""
+  apiTokens(orgId: String!): [ApiToken!]!
 }
 
 extend type Mutation {
@@ -19,6 +22,42 @@ extend type Mutation {
 
   """Verify a magic-link token and return a session token."""
   verifyMagicLink(token: String!): AuthPayload!
+
+  """
+  Create an API token scoped to a single org. The caller must be a member of
+  the org. The full plaintext token is returned exactly once in the result —
+  it is hashed before storage and can never be retrieved again.
+  """
+  createApiToken(orgId: String!, name: String!): CreateApiTokenResult!
+
+  """Revoke (permanently delete) an API token the caller is allowed to manage."""
+  revokeApiToken(id: String!): Boolean!
+}
+
+"""
+An API token's non-secret metadata. The token value itself is never returned
+except once, at creation time, via CreateApiTokenResult.token.
+"""
+type ApiToken {
+  id: String!
+  orgId: String!
+  name: String!
+  """Non-secret display prefix (e.g. `cet_a1b2c3d4`) to identify the token."""
+  tokenPrefix: String!
+  """User who created the token."""
+  createdByUserId: String!
+
+  """DateTime"""
+  lastUsedAt: DateTime
+
+  """DateTime"""
+  createdAt: DateTime!
+}
+
+type CreateApiTokenResult {
+  apiToken: ApiToken!
+  """The full plaintext token — shown only once. Store it now; it is unrecoverable."""
+  token: String!
 }
 
 type RequestMagicLinkResult {
