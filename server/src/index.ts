@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@as-integrations/express4';
-import { createHttpHandler } from '@cubicecho/graphql-mcp';
 import { db } from '@cubicecho/notes-db';
 import cors from 'cors';
 import express from 'express';
 import { type Context, createContext } from './context.ts';
+import { createMcpHttpHandler } from './mcp.ts';
 import { buildAppSchema } from './schema/index.ts';
 
 const schema = buildAppSchema(db);
@@ -43,12 +43,9 @@ app.use(
   }),
 );
 
-// MCP endpoint: the GraphQL API exposed as Model Context Protocol tools via
-// @cubicecho/graphql-mcp. Its default (local) executor runs tool operations
-// against the same permission-wrapped `schema`, and `contextFromRequest` derives
-// the per-call GraphQL context from the same `createContext` as /graphql — so
-// dual auth (session or org-scoped API token) and every CASL rule apply
-// identically here. An MCP caller can do exactly what it could over /graphql.
+// MCP endpoint: the GraphQL API exposed as Model Context Protocol tools (see
+// ./mcp.ts — it runs against the permission-wrapped schema with the same
+// createContext as /graphql, so dual auth and every CASL rule apply identically).
 //
 // Mounted with app.use (not app.post) so the cors middleware also handles the
 // CORS preflight OPTIONS request and, in production, non-POST methods reach the
@@ -59,15 +56,7 @@ app.use(
     origin: process.env.APP_URL ?? 'http://localhost:8081',
   }),
   express.json(),
-  createHttpHandler({
-    schema,
-    contextFromRequest: (req) =>
-      createContext({
-        db,
-        authHeader: req.headers.authorization,
-        demoUserId: DEMO_USER_ID,
-      }),
-  }),
+  createMcpHttpHandler({ db, demoUserId: DEMO_USER_ID }),
 );
 
 // Serve the built Expo web client (app/dist) in production so the API and the

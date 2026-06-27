@@ -1,51 +1,35 @@
 import assert from 'node:assert/strict';
-import { before, beforeEach, describe, it } from 'node:test';
-import {
-  type GraphqlResult,
-  type ToolDescriptor,
-  buildTools,
-  createLocalExecutor,
-} from '@cubicecho/graphql-mcp';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { after, before, beforeEach, describe, it } from 'node:test';
+import { type ToolDescriptor, buildTools } from '@cubicecho/graphql-mcp';
 import {
   apiTokens,
   orgMembers,
   orgs,
   provisionUser,
 } from '@cubicecho/notes-db';
-import type { GraphQLSchema } from 'graphql';
-import { type Context, createContext } from '../../context.ts';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import express from 'express';
 import { generateApiToken } from '../../lib/api-token.ts';
+import { createMcpHttpHandler } from '../../mcp.ts';
 import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
 function toolNamed(tools: ToolDescriptor[], name: string): ToolDescriptor {
   const tool = tools.find((t) => t.name === name);
-  if (!tool) throw new Error(`No MCP tool named ${name}`);
+  if (!tool) {
+    throw new Error(`No MCP tool named ${name}`);
+  }
   return tool;
 }
 
-/**
- * Runs a tool descriptor exactly as the MCP server does: through the library's
- * local executor against the permission-wrapped schema, with the caller's
- * {@link Context} as the GraphQL `contextValue`. This is the same path
- * `createHttpHandler` takes, so CASL/auth is exercised identically to /graphql.
- */
-function runTool(
-  schema: GraphQLSchema,
-  tool: ToolDescriptor,
-  variables: Record<string, unknown>,
-  context: Context,
-): Promise<GraphqlResult> {
-  const executor = createLocalExecutor(schema);
-  return executor({
-    query: tool.query,
-    variables,
-    operationName: tool.name,
-    context,
-  });
-}
-
-function errorText(result: GraphqlResult): string {
-  return (result.errors ?? []).map((e) => e.message).join('\n');
+function textOf(result: CallToolResult): string {
+  return result.content
+    .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+    .map((c) => c.text)
+    .join('\n');
 }
 
 describe('graphql-mcp', () => {
@@ -57,6 +41,7 @@ describe('graphql-mcp', () => {
     tools = buildTools(ctx.schema);
   });
 
+  // Schema → tool-descriptor projection. Pure, no auth.
   describe('buildTools', () => {
     it('exposes both query and mutation root fields as tools', () => {
       const names = new Set(tools.map((t) => t.name));
@@ -95,11 +80,61 @@ describe('graphql-mcp', () => {
     });
   });
 
-  describe('auth enforcement (CASL applies identically to /graphql)', () => {
+  // Drives the *real* createMcpHttpHandler over HTTP through the MCP client, so
+  // the full wiring is exercised: contextFromRequest → createContext (reading the
+  // Authorization header), the permission-wrapped schema, and the library's
+  // GraphQL-error → tool-`isError` mapping. CASL/auth must apply exactly as on
+  // /graphql — a forbidden operation comes back as an `isError` tool result, not
+  // a success.
+  describe('end-to-end over HTTP (CASL applies identically to /graphql)', () => {
+    let baseUrl: URL;
+    let closeServer: () => Promise<void>;
+
     let userId: string;
     let sharedOrgId: string;
     let otherOrgId: string;
     let apiToken: string;
+
+    before(async () => {
+      const app = express();
+      // Mounted exactly as in src/index.ts (sans cors), against the test db.
+      app.use('/mcp', express.json(), createMcpHttpHandler({ db: ctx.db }));
+      const server = http.createServer(app);
+      await new Promise<void>((resolve) => server.listen(0, resolve));
+      const { port } = server.address() as AddressInfo;
+      baseUrl = new URL(`http://127.0.0.1:${port}/mcp`);
+      closeServer = () =>
+        new Promise<void>((resolve) => server.close(() => resolve()));
+    });
+
+    after(async () => {
+      await closeServer();
+    });
+
+    // Connects a fresh MCP client (optionally bearer-authenticated), calls one
+    // tool, and tears the connection down.
+    async function callTool(
+      token: string | undefined,
+      name: string,
+      args: Record<string, unknown>,
+    ): Promise<CallToolResult> {
+      const transport = new StreamableHTTPClientTransport(
+        baseUrl,
+        token
+          ? { requestInit: { headers: { Authorization: `Bearer ${token}` } } }
+          : undefined,
+      );
+      const client = new Client({ name: 'mcp-test', version: '0' });
+      await client.connect(transport);
+      try {
+        return (await client.callTool({
+          name,
+          arguments: args,
+        })) as CallToolResult;
+      } finally {
+        await client.close();
+      }
+    }
 
     beforeEach(async () => {
       await cleanDb(ctx.db);
@@ -135,88 +170,62 @@ describe('graphql-mcp', () => {
       });
     });
 
-    const createNoteVars = (orgId: string) => ({
+    const createNoteArgs = (orgId: string) => ({
       values: { userId, orgId, title: 'X', content: '' },
     });
 
-    it('rejects an unauthenticated caller', async () => {
-      const c = await createContext({ db: ctx.db });
-      const result = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'createNote'),
-        createNoteVars(sharedOrgId),
-        c,
+    it('returns an isError tool result for an unauthenticated caller', async () => {
+      const result = await callTool(
+        undefined,
+        'createNote',
+        createNoteArgs(sharedOrgId),
       );
-      assert.match(errorText(result), /Not authenticated/);
+      assert.equal(result.isError, true);
+      assert.match(textOf(result), /Not authenticated/);
     });
 
     it('lets a session actor create a note in their org', async () => {
-      const c = await createContext({
-        db: ctx.db,
-        authHeader: `Bearer ${userId}`,
-      });
-      const result = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'createNote'),
-        createNoteVars(sharedOrgId),
-        c,
+      const result = await callTool(
+        userId,
+        'createNote',
+        createNoteArgs(sharedOrgId),
       );
-      assert.deepEqual(result.errors ?? [], []);
-      assert.ok(result.data?.createNote);
+      assert.notEqual(result.isError, true);
+      // The auto-generated selection set round-trips the note's orgId.
+      assert.match(textOf(result), new RegExp(`"orgId":\\s*"${sharedOrgId}"`));
     });
 
     it('confines an API-token actor to its own org', async () => {
-      const c = await createContext({
-        db: ctx.db,
-        authHeader: `Bearer ${apiToken}`,
-      });
-
       // Own org → allowed.
-      const ok = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'createNote'),
-        createNoteVars(sharedOrgId),
-        c,
+      const ok = await callTool(
+        apiToken,
+        'createNote',
+        createNoteArgs(sharedOrgId),
       );
-      assert.deepEqual(ok.errors ?? [], []);
+      assert.notEqual(ok.isError, true);
 
       // A different org the *creator* belongs to → still forbidden via the token.
-      const denied = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'createNote'),
-        createNoteVars(otherOrgId),
-        c,
+      const denied = await callTool(
+        apiToken,
+        'createNote',
+        createNoteArgs(otherOrgId),
       );
-      assert.match(errorText(denied), /Forbidden/);
+      assert.equal(denied.isError, true);
+      assert.match(textOf(denied), /Forbidden/);
     });
 
     it('forbids an API-token actor from creating a new org', async () => {
-      const c = await createContext({
-        db: ctx.db,
-        authHeader: `Bearer ${apiToken}`,
+      const result = await callTool(apiToken, 'createOrg', {
+        values: { name: 'Escapes scope' },
       });
-      const result = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'createOrg'),
-        { values: { name: 'Escapes scope' } },
-        c,
-      );
-      assert.match(errorText(result), /Forbidden/);
+      assert.equal(result.isError, true);
+      assert.match(textOf(result), /Forbidden/);
     });
 
     it('runs a query tool for an authorized actor', async () => {
-      const c = await createContext({
-        db: ctx.db,
-        authHeader: `Bearer ${userId}`,
-      });
-      const result = await runTool(
-        ctx.schema,
-        toolNamed(tools, 'myOrgs'),
-        {},
-        c,
-      );
-      assert.deepEqual(result.errors ?? [], []);
-      assert.match(JSON.stringify(result.data), /Shared/);
+      const result = await callTool(userId, 'myOrgs', {});
+      assert.notEqual(result.isError, true);
+      assert.match(textOf(result), /Shared/);
     });
   });
 });
