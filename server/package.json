@@ -14,6 +14,7 @@
     "@cubicecho/graphql-mcp": "^0.1.1",
     "@cubicecho/notes-db": "*",
     "@graphql-tools/delegate": "^12.0.16",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@vantreeseba/drizzle-graphql": "^1.0.3",
     "@vantreeseba/graphql-casl": "^1.0.0",
     "cors": "^2.8.5",

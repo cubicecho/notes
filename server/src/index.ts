@@ -49,7 +49,11 @@ app.use(
 // the per-call GraphQL context from the same `createContext` as /graphql — so
 // dual auth (session or org-scoped API token) and every CASL rule apply
 // identically here. An MCP caller can do exactly what it could over /graphql.
-app.post(
+//
+// Mounted with app.use (not app.post) so the cors middleware also handles the
+// CORS preflight OPTIONS request and, in production, non-POST methods reach the
+// transport rather than the SPA catch-all below — matching the /graphql mount.
+app.use(
   '/mcp',
   cors<cors.CorsRequest>({
     origin: process.env.APP_URL ?? 'http://localhost:8081',
