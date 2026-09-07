@@ -146,3 +146,4 @@ Always add new `.agents/` files to the reference list below.
 - [`.agents/db-patterns.md`](.agents/db-patterns.md) — Drizzle schema, PGLite dual-backend, query patterns, migrations
 - [`.agents/server-patterns.md`](.agents/server-patterns.md) — Apollo Server, resolver authoring, auth chain, codegen pipeline
 - [`.agents/todo.md`](.agents/todo.md) — Open features, known issues, deferred work
+- [`.agents/vault-architecture.md`](.agents/vault-architecture.md) — Obsidian comparison + design exploration for a file-backed (Markdown-on-disk) vault redesign
