@@ -14,9 +14,10 @@ extend type Query {
 
 extend type Mutation {
   """
-  Request a magic link to be sent to the given email.
-  In development the link is returned directly; in production it is logged
-  (TODO: send via email provider).
+  Request a magic link for the given email. The link is returned in devLink
+  outside production or with EXPOSE_MAGIC_LINK; otherwise it is only logged
+  (TODO: send via email provider). With AUTH_MAGIC_LINK=false no link is made:
+  the result carries a live session in token/user instead.
   """
   requestMagicLink(email: String!): RequestMagicLinkResult!
 
@@ -65,10 +66,14 @@ type RequestMagicLinkResult {
   success: Boolean!
   """In development only: the full magic-link URL so the client can bypass email."""
   devLink: String
+  """With AUTH_MAGIC_LINK=false: a session token, as from verifyMagicLink."""
+  token: String
+  """With AUTH_MAGIC_LINK=false: the signed-in user."""
+  user: User
 }
 
 type AuthPayload {
-  """Opaque session token — send as Bearer in Authorization header."""
+  """Session JWT (30 days) — send as Bearer in Authorization header."""
   token: String!
   user: User!
 }

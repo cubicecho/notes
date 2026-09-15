@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm';
 import { graphql } from 'graphql';
 import { createContext } from '../context.ts';
 import { generateApiToken } from '../lib/api-token.ts';
+import { signSessionToken } from '../lib/session.ts';
 import { cleanDb, createTestContext, first } from './helpers/db.ts';
 
 // Wait (briefly, with retries) for the fire-and-forget lastUsedAt write.
@@ -115,7 +116,7 @@ describe('createContext (dual auth)', () => {
     it('resolves the user with ALL of their memberships', async () => {
       const c = await createContext({
         db: ctx.db,
-        authHeader: `Bearer ${userId}`,
+        authHeader: `Bearer ${await signSessionToken(userId)}`,
       });
       assert.equal(c.userId, userId);
       assert.equal(c.authKind, 'session');
@@ -123,10 +124,36 @@ describe('createContext (dual auth)', () => {
       assert.deepEqual(orgIds, [personalOrgId, sharedOrgId].sort());
     });
 
-    it('falls back to the demo user when no header is present', async () => {
-      const c = await createContext({ db: ctx.db, demoUserId: userId });
-      assert.equal(c.userId, userId);
-      assert.equal(c.authKind, 'session');
+    it('is unauthenticated when no header is present', async () => {
+      const c = await createContext({ db: ctx.db });
+      assert.equal(c.userId, undefined);
+      assert.deepEqual(await c.getUserMemberships(), []);
+    });
+
+    // A user id used to be the session token. It is not a credential any more.
+    it('rejects a raw user id as a bearer token', async () => {
+      const c = await createContext({
+        db: ctx.db,
+        authHeader: `Bearer ${userId}`,
+      });
+      assert.equal(c.userId, undefined);
+      assert.deepEqual(await c.getUserMemberships(), []);
+    });
+
+    it('rejects a JWT signed with a different secret', async () => {
+      const previous = process.env.JWT_SECRET;
+      process.env.JWT_SECRET = 'some-other-secret';
+      const forged = await signSessionToken(userId);
+      if (previous === undefined) {
+        Reflect.deleteProperty(process.env, 'JWT_SECRET');
+      } else {
+        process.env.JWT_SECRET = previous;
+      }
+      const c = await createContext({
+        db: ctx.db,
+        authHeader: `Bearer ${forged}`,
+      });
+      assert.equal(c.userId, undefined);
     });
   });
 

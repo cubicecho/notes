@@ -24,7 +24,6 @@ import { buildAppSchema } from './schema/index.ts';
  */
 export function createMcpHttpHandler(opts: {
   db: DB;
-  demoUserId?: string;
 }): McpHttpHandler {
   return createHttpHandler({
     schema: buildAppSchema(opts.db),
@@ -32,7 +31,6 @@ export function createMcpHttpHandler(opts: {
       createContext({
         db: opts.db,
         authHeader: req.headers.authorization,
-        demoUserId: opts.demoUserId,
       }),
   });
 }

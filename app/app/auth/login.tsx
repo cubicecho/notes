@@ -24,6 +24,10 @@ export default function LoginScreen() {
     setErrorMsg('');
     try {
       const result = await requestMagicLink(email.trim());
+      if (result.signedIn) {
+        // AuthContext already stored the session and navigated away.
+        return;
+      }
       setDevLink(result.devLink ?? null);
       setStatus('sent');
     } catch (e) {

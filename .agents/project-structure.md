@@ -39,7 +39,7 @@ app/
     ├── index.css                   # CSS custom properties (shadcn theme vars)
     ├── apollo-client.ts            # ApolloClient pointing at localhost:4000
     ├── lib/
-    │   ├── auth.ts                 # DEMO_USER_ID + getToken/setToken/clearToken
+    │   ├── auth.ts                 # loadToken/persistToken/getToken/clearToken (session JWT)
     │   ├── storage.ts              # localStorage wrapper (web only, safe on native)
     │   └── utils.ts                # cn() — clsx + tailwind-merge
     ├── context/

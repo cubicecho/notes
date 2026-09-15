@@ -4,20 +4,14 @@ import { eq } from 'drizzle-orm';
 import type {
   MutationResolvers,
   QueryResolvers,
+  RequestMagicLinkResult,
 } from '../../__generated__/resolvers.ts';
+import { magicLinkExposed, magicLinkRequired } from '../../config.ts';
+import { signSessionToken } from '../../lib/session.ts';
 
 const TOKEN_TTL_MINUTES = 15;
 
-const IS_DEV = process.env.NODE_ENV !== 'production';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:8081';
-
-// Return the magic link directly in the API response instead of (or in addition
-// to) emailing it. Always on in dev; opt-in for production-style deployments
-// without a mail provider — e.g. local / homelab setups where the operator is
-// the only user and can copy the link from the login screen. Never enable this
-// on a publicly reachable instance: it hands out login links to anyone who
-// knows an email address.
-const EXPOSE_MAGIC_LINK = IS_DEV || process.env.EXPOSE_MAGIC_LINK === 'true';
 
 export const authResolvers: {
   Query: QueryResolvers;
@@ -38,7 +32,21 @@ export const authResolvers: {
 
       // Find or create the user along with their personal org (idempotent —
       // also self-heals a missing personal org on any subsequent login).
-      await provisionUser(context.db, { email });
+      const { user } = await provisionUser(context.db, { email });
+
+      // No-link mode: the address alone is the credential. Secure local
+      // networks only — see config.ts.
+      if (!magicLinkRequired()) {
+        console.log(`[auth] Magic links are off; signed ${email} in directly.`);
+        return {
+          success: true,
+          devLink: null,
+          token: await signSessionToken(user.id),
+          // A plain row: the generated relation resolvers fill in User's
+          // relation fields, but codegen has no mappers to know that.
+          user: user as RequestMagicLinkResult['user'],
+        };
+      }
 
       // Generate token and expiry
       const token = crypto.randomBytes(32).toString('hex');
@@ -51,7 +59,12 @@ export const authResolvers: {
       // TODO: send email via provider (SendGrid, Resend, etc.) when not exposing
       // the link directly.
       console.log(`[auth] magic link for ${email}: ${link}`);
-      return { success: true, devLink: EXPOSE_MAGIC_LINK ? link : null };
+      return {
+        success: true,
+        devLink: magicLinkExposed() ? link : null,
+        token: null,
+        user: null,
+      };
     },
 
     verifyMagicLink: async (_parent, args, context) => {
@@ -76,8 +89,7 @@ export const authResolvers: {
       });
       if (!user) throw new Error('User not found');
 
-      // For MVP: userId is the session token — server trusts any valid UUID as a userId
-      return { token: user.id, user };
+      return { token: await signSessionToken(user.id), user };
     },
   },
 };

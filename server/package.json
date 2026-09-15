@@ -22,6 +22,7 @@
     "express": "^4.21.2",
     "graphql": "^16.9.0",
     "graphql-middleware": "^6.1.35",
+    "jose": "^6.2.12",
     "zod": "^3.25.76"
   },
   "devDependencies": {

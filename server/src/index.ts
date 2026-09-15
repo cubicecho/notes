@@ -1,3 +1,5 @@
+// Must stay first: refuses to boot a misconfigured production instance.
+import './preflight.ts';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,15 +9,20 @@ import { expressMiddleware } from '@as-integrations/express4';
 import { db } from '@cubicecho/notes-db';
 import cors from 'cors';
 import express from 'express';
+import { magicLinkRequired } from './config.ts';
 import { type Context, createContext } from './context.ts';
 import { createMcpHttpHandler } from './mcp.ts';
 import { buildAppSchema } from './schema/index.ts';
 
 const schema = buildAppSchema(db);
 
-const DEMO_USER_ID =
-  process.env.DEMO_USER_ID ?? '00000000-0000-0000-0000-000000000001';
 const PORT = Number(process.env.PORT ?? 4000);
+
+if (!magicLinkRequired()) {
+  console.warn(
+    '[auth] AUTH_MAGIC_LINK=false — anyone who can reach this server can sign in as any email address. Secure local networks only.',
+  );
+}
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -38,7 +45,6 @@ app.use(
       createContext({
         db,
         authHeader: req.headers.authorization,
-        demoUserId: DEMO_USER_ID,
       }),
   }),
 );
@@ -56,7 +62,7 @@ app.use(
     origin: process.env.APP_URL ?? 'http://localhost:8081',
   }),
   express.json(),
-  createMcpHttpHandler({ db, demoUserId: DEMO_USER_ID }),
+  createMcpHttpHandler({ db }),
 );
 
 // Serve the built Expo web client (app/dist) in production so the API and the

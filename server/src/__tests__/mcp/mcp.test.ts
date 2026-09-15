@@ -14,6 +14,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
 import { generateApiToken } from '../../lib/api-token.ts';
+import { signSessionToken } from '../../lib/session.ts';
 import { createMcpHttpHandler } from '../../mcp.ts';
 import { cleanDb, createTestContext, first } from '../helpers/db.ts';
 
@@ -186,13 +187,23 @@ describe('graphql-mcp', () => {
 
     it('lets a session actor create a note in their org', async () => {
       const result = await callTool(
-        userId,
+        await signSessionToken(userId),
         'createNote',
         createNoteArgs(sharedOrgId),
       );
       assert.notEqual(result.isError, true);
       // The auto-generated selection set round-trips the note's orgId.
       assert.match(textOf(result), new RegExp(`"orgId":\\s*"${sharedOrgId}"`));
+    });
+
+    it('treats a raw user id as unauthenticated', async () => {
+      const result = await callTool(
+        userId,
+        'createNote',
+        createNoteArgs(sharedOrgId),
+      );
+      assert.equal(result.isError, true);
+      assert.match(textOf(result), /Not authenticated/);
     });
 
     it('confines an API-token actor to its own org', async () => {
@@ -223,7 +234,11 @@ describe('graphql-mcp', () => {
     });
 
     it('runs a query tool for an authorized actor', async () => {
-      const result = await callTool(userId, 'myOrgs', {});
+      const result = await callTool(
+        await signSessionToken(userId),
+        'myOrgs',
+        {},
+      );
       assert.notEqual(result.isError, true);
       assert.match(textOf(result), /Shared/);
     });

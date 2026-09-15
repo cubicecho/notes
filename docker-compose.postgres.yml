@@ -10,7 +10,8 @@ services:
       - PORT=4000
       - DATABASE_URL=postgres://notes:notes@postgres:5432/notes
       - APP_URL=http://localhost:4000
-      - DEMO_USER_ID=00000000-0000-0000-0000-000000000001
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      # - AUTH_MAGIC_LINK=false
     depends_on:
       postgres:
         condition: service_healthy

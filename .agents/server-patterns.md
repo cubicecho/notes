@@ -116,27 +116,17 @@ requireCan(read, User)
 
 ## Context
 
-`server/src/index.ts` builds context per request. `getUserMemberships()` is lazy-loaded
-and Promise-cached — called at most once per request regardless of how many permission
-rules check it:
+`createContext` in `server/src/context.ts` builds context per request (shared by
+`/graphql` and `/mcp`). A Bearer value authenticates as either an org-scoped API
+token (`cet_…`) or a session JWT (`lib/session.ts`, signed with `JWT_SECRET`).
+Anything else — no header, a raw user id, a bad JWT — is unauthenticated; there is
+no demo-user fallback. `getUserMemberships()` is lazy-loaded and Promise-cached —
+called at most once per request regardless of how many permission rules check it.
 
-```typescript
-context: async ({ req }) => {
-  const userId = req.headers.authorization?.replace('Bearer ', '') ?? DEMO_USER_ID;
-  let membershipsPromise: Promise<OrgMembership[]> | undefined;
-  return {
-    db, userId,
-    getUserMemberships: () => {
-      if (membershipsPromise === undefined) {
-        membershipsPromise = db.query.orgMembers
-          .findMany({ where: { userId } })
-          .then(ms => ms.map(m => ({ orgId: m.orgId, role: m.role })));
-      }
-      return membershipsPromise!;
-    },
-  };
-}
-```
+Sessions come from `verifyMagicLink`, or straight from `requestMagicLink` when
+`AUTH_MAGIC_LINK=false` (secure local networks only; see `config.ts`).
+`preflight.ts` is the first import of `index.ts` and exits in production if
+`JWT_SECRET` is unset or the dev default.
 
 ## Codegen
 

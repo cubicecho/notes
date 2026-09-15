@@ -1,6 +1,7 @@
 import { type DB, apiTokens } from '@cubicecho/notes-db';
 import { eq } from 'drizzle-orm';
 import { hashApiToken, isApiToken } from './lib/api-token.ts';
+import { verifySessionToken } from './lib/session.ts';
 
 export interface OrgMembership {
   orgId: string;
@@ -31,8 +32,12 @@ const toMemberships = (rows: OrgMemberRow[]): OrgMembership[] =>
  *  - **API token** (`cet_`-prefixed): looked up by hash. The actor is the
  *    token's creator but scoped to *only* the token's org — memberships in every
  *    other org are filtered out, so a token for org A can never reach org B.
- *  - **Session token** (raw user-id UUID, the MVP scheme) or the demo fallback:
- *    the actor is that user with all of their memberships.
+ *  - **Session token** (a JWT from `verifyMagicLink`, or from
+ *    `requestMagicLink` when `AUTH_MAGIC_LINK=false`): the actor is that user
+ *    with all of their memberships.
+ *
+ * Anything else — no header, a raw user id, a bad or expired JWT — is
+ * unauthenticated.
  *
  * `getUserMemberships` is lazy and promise-cached so it runs at most once per
  * request regardless of how many permission rules consult it.
@@ -40,7 +45,6 @@ const toMemberships = (rows: OrgMemberRow[]): OrgMembership[] =>
 export async function createContext(opts: {
   db: DB;
   authHeader?: string;
-  demoUserId?: string;
 }): Promise<Context> {
   const { db } = opts;
   const bearer = opts.authHeader?.replace('Bearer ', '');
@@ -93,12 +97,11 @@ export async function createContext(opts: {
     };
   }
 
-  // Session / demo path: the bearer value is the user id.
-  const userId = bearer ?? opts.demoUserId;
+  const userId = bearer ? await verifySessionToken(bearer) : null;
   let membershipsPromise: Promise<OrgMembership[]> | undefined;
   return {
     db,
-    userId,
+    userId: userId ?? undefined,
     authKind: 'session',
     getUserMemberships: () => {
       if (membershipsPromise === undefined) {

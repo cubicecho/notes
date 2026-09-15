@@ -21,6 +21,11 @@ const REQUEST_MAGIC_LINK = graphql(`
     requestMagicLink(email: $email) {
       success
       devLink
+      token
+      user {
+        id
+        email
+      }
     }
   }
 `);
@@ -47,7 +52,10 @@ interface AuthContextValue {
   /** The caller's personal org id — owns their personal notes. */
   personalOrgId: string | null;
   loading: boolean;
-  requestMagicLink: (email: string) => Promise<{ devLink?: string | null }>;
+  /** Resolves `signedIn: true` when the server skipped the link (AUTH_MAGIC_LINK=false). */
+  requestMagicLink: (
+    email: string,
+  ) => Promise<{ devLink?: string | null; signedIn: boolean }>;
   verifyMagicLink: (token: string) => Promise<void>;
   signOut: () => void;
 }
@@ -104,16 +112,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const requestMagicLink = async (email: string) => {
     const { data } = await requestLink({ variables: { email } });
-    return { devLink: data?.requestMagicLink.devLink };
+    const result = data?.requestMagicLink;
+    if (result?.token && result.user) {
+      await signIn(result.token, result.user);
+      return { signedIn: true };
+    }
+    return { devLink: result?.devLink, signedIn: false };
+  };
+
+  const signIn = async (token: string, signedInUser: AuthUser) => {
+    await persistToken(token);
+    setUser(signedInUser);
+    await refetch();
+    router.replace('/(app)');
   };
 
   const verifyMagicLink = async (token: string) => {
     const { data } = await verifyLink({ variables: { token } });
     if (!data) throw new Error('Verification failed');
-    await persistToken(data.verifyMagicLink.token);
-    setUser(data.verifyMagicLink.user);
-    await refetch();
-    router.replace('/(app)');
+    await signIn(data.verifyMagicLink.token, data.verifyMagicLink.user);
   };
 
   const signOut = () => {
