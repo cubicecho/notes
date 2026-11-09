@@ -48,9 +48,40 @@
   "overrides": [
     {
       "include": ["**/__generated__/**"],
-      "linter": { "enabled": false },
-      "formatter": { "enabled": false },
-      "organizeImports": { "enabled": false }
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      },
+      "organizeImports": {
+        "enabled": false
+      }
+    },
+    {
+      "include": [
+        "app/src/components/ui/**",
+        "app/src/components/*.tsx",
+        "app/src/lib/bottom-bar.ts",
+        "app/src/lib/color.ts",
+        "app/src/lib/cubeui-theme.ts",
+        "app/src/lib/error-message.ts",
+        "app/src/lib/frame-focus-guard.ts",
+        "app/src/lib/readable-text-color.ts",
+        "app/src/lib/roving-focus.ts",
+        "app/src/lib/select-options.ts",
+        "app/src/lib/utils.ts",
+        "app/src/lib/web-as.d.ts"
+      ],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      },
+      "organizeImports": {
+        "enabled": false
+      }
     }
   ]
 }

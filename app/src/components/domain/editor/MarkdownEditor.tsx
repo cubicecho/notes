@@ -60,14 +60,17 @@ export function MarkdownEditor({ note }: MarkdownEditorProps) {
   }
 
   return (
-    // Anchor to the viewport (minus the h-12 navbar) so the editor fills the
-    // page. A percentage height would collapse here: expo-router's <Slot/>
-    // screen wrapper between <main> and this component has no definite height
-    // for `height:100%` to resolve against.
+    // A flex child of the shell's content pane, which has a height to divide:
+    // the rail beside it from `md` up, the bar above it on a phone.
     <div
-      className="md-editor-fill flex flex-col"
+      className="md-editor-fill"
       data-color-mode="auto"
-      style={{ height: 'calc(100vh - 3rem)' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+      }}
     >
       <MDEditor
         value={value}

@@ -1,7 +1,9 @@
+import { CenteredCardLayout } from '@/components/centered-card-layout';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/context/AuthContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
 export default function VerifyScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -25,24 +27,25 @@ export default function VerifyScreen() {
 
   if (status === 'verifying') {
     return (
-      <View className="flex-1 items-center justify-center bg-background gap-3">
-        <ActivityIndicator size="large" />
-        <Text className="text-muted-foreground">Signing you in…</Text>
-      </View>
+      <CenteredCardLayout
+        level={1}
+        title="Signing you in…"
+        contentSlot={<Spinner label="Signing you in" className="size-6" />}
+      />
     );
   }
 
   return (
-    <View className="flex-1 items-center justify-center bg-background px-6 gap-4">
-      <Text className="text-destructive text-center">{errorMsg}</Text>
-      <TouchableOpacity
-        onPress={() => router.replace('/auth/login')}
-        className="rounded-md bg-primary px-4 py-2"
-      >
-        <Text className="text-primary-foreground font-medium">
-          Back to login
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <CenteredCardLayout
+      level={1}
+      title="That link didn't work"
+      description={errorMsg}
+      footerActionsSlot={
+        <Button
+          content="Back to sign in"
+          onPress={() => router.replace('/auth/login')}
+        />
+      }
+    />
   );
 }

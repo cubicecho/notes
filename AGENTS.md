@@ -16,9 +16,9 @@ Monorepo: npm workspaces with four packages — `app/` (Expo + React Native Web)
 
 | Layer    | Technology |
 |----------|-----------|
-| Frontend | Expo 55, React 19, Expo Router, NativeWind (Tailwind), Apollo Client |
+| Frontend | Expo 56, React 19, Expo Router, NativeWind 5 (Tailwind 4), Apollo Client |
 | Editor   | @uiw/react-md-editor (split pane, web only for MVP) |
-| UI       | shadcn/ui primitives, Radix UI, Tailwind CSS |
+| UI       | cubeui native registry (`app/components.json`), installed with `npx shadcn add @cubeui/<item>` |
 | State    | React Context + Apollo Client cache |
 | API      | Apollo Server 5, Express 4, GraphQL |
 | Database | Drizzle ORM, PGLite (embedded Postgres) |
@@ -150,7 +150,7 @@ Always add new `.agents/` files to the reference list below.
 ## Agent Reference Files
 
 - [`.agents/project-structure.md`](.agents/project-structure.md) — Full directory tree, DB schema, GraphQL operations, client route table
-- [`.agents/client-patterns.md`](.agents/client-patterns.md) — Expo Router, NotesContext (GraphQL), AuthContext, MarkdownEditor, NativeWind patterns
+- [`.agents/client-patterns.md`](.agents/client-patterns.md) — Expo Router, NotesContext (GraphQL), AuthContext, MarkdownEditor, cubeui and NativeWind patterns
 - [`.agents/db-patterns.md`](.agents/db-patterns.md) — Drizzle schema, PGLite dual-backend, query patterns, migrations
 - [`.agents/server-patterns.md`](.agents/server-patterns.md) — Apollo Server, resolver authoring, auth chain, codegen pipeline
 - [`.agents/todo.md`](.agents/todo.md) — Open features, known issues, deferred work

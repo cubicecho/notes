@@ -3,8 +3,8 @@ const dotenv = require('dotenv');
 
 // Load the monorepo-root .env first, then a local app/.env.local override if present.
 // override: false means already-set env vars (e.g. from CI) are not clobbered.
-dotenv.config({path: path.resolve(__dirname, '../.env'), override: false});
-dotenv.config({path: path.resolve(__dirname, '.env.local'), override: false});
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: false });
+dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: false });
 
 module.exports = {
   expo: {

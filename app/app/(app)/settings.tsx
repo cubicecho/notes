@@ -1,15 +1,24 @@
+import { CardLayout } from '@/components/card-layout';
+import { Combobox } from '@/components/combobox';
+import { ConfirmButton } from '@/components/confirm-button';
+import { LoadState } from '@/components/domain/query/load-state';
+import { EmptyState } from '@/components/empty-state';
+import { List } from '@/components/list';
+import { ListItem } from '@/components/list-item';
+import { PageLayout } from '@/components/page-layout';
+import { PropertyList, PropertyRow } from '@/components/property-list';
+import { SettingRow } from '@/components/setting-row';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { CodeBlock } from '@/components/ui/code';
+import { CopyButton } from '@/components/ui/copy-button';
+import { FieldError } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { ThemePicker } from '@/components/ui/theme-picker';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { View } from 'react-native';
 import { graphql } from '../../src/__generated__/index.js';
 
 const MY_ORGS = graphql(`
@@ -62,194 +71,152 @@ const REVOKE_API_TOKEN = graphql(`
   }
 `);
 
-/** Copy text to the clipboard on web; a no-op where unavailable. */
-async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    const clip = (globalThis as { navigator?: { clipboard?: Clipboard } })
-      .navigator?.clipboard;
-    if (!clip) return false;
-    await clip.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function formatLastUsed(value: unknown): string {
   if (typeof value !== 'string' && typeof value !== 'number') {
     return 'Never used';
   }
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Never used';
+  if (Number.isNaN(date.getTime())) {
+    return 'Never used';
+  }
   return `Last used ${date.toLocaleDateString()}`;
 }
 
-function ThemeRow() {
-  const { theme, setTheme } = useTheme();
-  const options = [
-    { value: 'light', label: 'Light' },
-    { value: 'dark', label: 'Dark' },
-    { value: 'system', label: 'System' },
-  ] as const;
+function AccountCard() {
+  const { user, signOut } = useAuth();
 
   return (
-    <View className="gap-2">
-      <Text className="text-sm font-medium text-foreground">Appearance</Text>
-      <View className="flex-row gap-2">
-        {options.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            onPress={() => setTheme(opt.value)}
-            className={`flex-1 items-center rounded-md border py-2 ${
-              theme === opt.value
-                ? 'border-primary bg-primary/10'
-                : 'border-border bg-card'
-            }`}
-          >
-            <Text
-              className={`text-sm ${
-                theme === opt.value
-                  ? 'text-primary font-medium'
-                  : 'text-foreground'
-              }`}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+    <CardLayout
+      level={2}
+      title="Account"
+      contentSlot={
+        <PropertyList
+          contentSlot={[
+            <PropertyRow
+              key="email"
+              label="Email"
+              value={user?.email ?? '—'}
+            />,
+          ]}
+        />
+      }
+      footerActionsSlot={
+        <Button variant="outline" content="Sign out" onPress={signOut} />
+      }
+    />
   );
 }
 
-function OrgsSection() {
-  const { data, loading, refetch } = useQuery(MY_ORGS);
+function AppearanceCard() {
+  return (
+    <CardLayout
+      level={2}
+      title="Appearance"
+      description="System follows your device. The choice is kept on this device."
+      contentSlot={<ThemePicker />}
+    />
+  );
+}
+
+function WorkspacesCard() {
+  const query = useQuery(MY_ORGS);
   const [createOrg, { loading: creating }] = useMutation(CREATE_ORG);
   const [newOrgName, setNewOrgName] = useState('');
-  const [showInput, setShowInput] = useState(false);
   const [error, setError] = useState('');
+  const orgs = query.data?.myOrgs ?? [];
 
   const handleCreate = async () => {
-    if (!newOrgName.trim()) return;
+    if (!newOrgName.trim()) {
+      return;
+    }
     setError('');
     try {
       await createOrg({ variables: { name: newOrgName.trim() } });
       setNewOrgName('');
-      setShowInput(false);
-      refetch();
+      query.refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create org');
+      setError(e instanceof Error ? e.message : 'Failed to create workspace');
     }
   };
 
   return (
-    <View className="gap-3">
-      <Text className="text-sm font-medium text-foreground">Workspaces</Text>
-
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <View className="gap-1">
-          {data?.myOrgs.map((org) => (
-            <View
-              key={org.id}
-              className="flex-row items-center rounded-md border border-border bg-card px-3 py-2.5"
-            >
-              <Text className="text-foreground">{org.name}</Text>
-            </View>
-          ))}
-          {data?.myOrgs.length === 0 && (
-            <Text className="text-sm text-muted-foreground">
-              No workspaces yet.
-            </Text>
-          )}
-        </View>
-      )}
-
-      {showInput ? (
-        <View className="gap-2">
-          <TextInput
-            className="rounded-md border border-input bg-background px-3 py-2 text-foreground"
-            placeholder="Workspace name"
-            value={newOrgName}
-            onChangeText={setNewOrgName}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleCreate}
+    <CardLayout
+      level={2}
+      title="Workspaces"
+      description="Shared notes live in a workspace. Your personal notes are always there too."
+      contentSlot={
+        <>
+          <LoadState
+            compact
+            query={query}
+            what="your workspaces"
+            count={orgs.length}
+            emptySlot={<EmptyState compact title="No workspaces yet." />}
           />
-          {error ? (
-            <Text className="text-destructive text-sm">{error}</Text>
-          ) : null}
+          <List
+            label="Workspaces"
+            contentSlot={orgs.map((org) => (
+              <ListItem key={org.id} title={org.name} />
+            ))}
+          />
           <View className="flex-row gap-2">
-            <TouchableOpacity
+            <Input
+              aria-label="New workspace name"
+              className="flex-1"
+              placeholder="New workspace name"
+              value={newOrgName}
+              onChangeText={setNewOrgName}
+              onSubmitEditing={handleCreate}
+            />
+            <Button
+              content="Create"
+              loading={creating}
+              disabled={!newOrgName.trim()}
               onPress={handleCreate}
-              disabled={creating || !newOrgName.trim()}
-              className="flex-1 items-center rounded-md bg-primary py-2 disabled:opacity-50"
-            >
-              {creating ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-primary-foreground font-medium">
-                  Create
-                </Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setShowInput(false);
-                setNewOrgName('');
-                setError('');
-              }}
-              className="flex-1 items-center rounded-md border border-border py-2"
-            >
-              <Text className="text-foreground">Cancel</Text>
-            </TouchableOpacity>
+            />
           </View>
-        </View>
-      ) : (
-        <TouchableOpacity
-          onPress={() => setShowInput(true)}
-          className="items-center rounded-md border border-dashed border-border py-2.5"
-        >
-          <Text className="text-sm text-muted-foreground">+ New workspace</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+          {error ? <FieldError>{error}</FieldError> : null}
+        </>
+      }
+    />
   );
 }
 
-function ApiTokensSection() {
-  const { data: orgsData, loading: orgsLoading } = useQuery(MY_ORGS);
-  const orgs = orgsData?.myOrgs ?? [];
+function ApiTokensCard() {
+  const orgsQuery = useQuery(MY_ORGS);
+  const orgs = orgsQuery.data?.myOrgs ?? [];
 
   const [pickedOrgId, setPickedOrgId] = useState<string | null>(null);
   const activeOrgId = pickedOrgId ?? orgs[0]?.id ?? null;
 
-  const { data, loading, refetch } = useQuery(API_TOKENS, {
+  const tokensQuery = useQuery(API_TOKENS, {
     variables: { orgId: activeOrgId ?? '' },
     skip: !activeOrgId,
   });
+  const tokens = tokensQuery.data?.apiTokens ?? [];
   const [createApiToken, { loading: creating }] = useMutation(CREATE_API_TOKEN);
   const [revokeApiToken] = useMutation(REVOKE_API_TOKEN);
 
   const [newName, setNewName] = useState('');
   const [plaintext, setPlaintext] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
 
   const handleCreate = async () => {
-    if (!newName.trim() || !activeOrgId) return;
+    if (!newName.trim() || !activeOrgId) {
+      return;
+    }
     setError('');
     setPlaintext(null);
-    setCopied(false);
     try {
       const result = await createApiToken({
         variables: { orgId: activeOrgId, name: newName.trim() },
       });
       const token = result.data?.createApiToken.token;
-      if (token) setPlaintext(token);
+      if (token) {
+        setPlaintext(token);
+      }
       setNewName('');
-      refetch();
+      tokensQuery.refetch();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create token');
     }
@@ -259,192 +226,151 @@ function ApiTokensSection() {
     setError('');
     try {
       await revokeApiToken({ variables: { id } });
-      refetch();
+      tokensQuery.refetch();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to revoke token');
     }
   };
 
-  const handleCopy = async () => {
-    if (!plaintext) return;
-    setCopied(await copyToClipboard(plaintext));
-  };
-
   return (
-    <View className="gap-3">
-      <Text className="text-sm font-medium text-foreground">API tokens</Text>
-      <Text className="text-xs text-muted-foreground">
-        Tokens are scoped to a single workspace. To access another workspace,
-        create a separate token for it.
-      </Text>
-
-      {orgsLoading ? (
-        <ActivityIndicator />
-      ) : orgs.length === 0 ? (
-        <Text className="text-sm text-muted-foreground">
-          Create a workspace to issue API tokens.
-        </Text>
-      ) : (
+    <CardLayout
+      level={2}
+      title="API tokens"
+      description="Tokens are scoped to a single workspace. To access another workspace, create a separate token for it."
+      contentSlot={
         <>
-          {/* Workspace picker */}
-          {orgs.length > 1 && (
-            <View className="flex-row flex-wrap gap-2">
-              {orgs.map((org) => (
-                <TouchableOpacity
-                  key={org.id}
-                  onPress={() => {
-                    setPickedOrgId(org.id);
+          <LoadState
+            compact
+            query={orgsQuery}
+            what="your workspaces"
+            count={orgs.length}
+            emptySlot={
+              <EmptyState
+                compact
+                title="Create a workspace to issue API tokens."
+              />
+            }
+          />
+          {orgs.length > 1 ? (
+            <SettingRow
+              title="Workspace"
+              description="Whose tokens are listed, and where a new one is made."
+              actionSlot={
+                <Combobox
+                  aria-label="Workspace"
+                  className="min-w-40"
+                  options={orgs.map((org) => ({
+                    value: org.id,
+                    label: org.name,
+                  }))}
+                  value={activeOrgId ?? undefined}
+                  onValueChange={(id: string) => {
+                    setPickedOrgId(id);
                     setPlaintext(null);
                   }}
-                  className={`rounded-md border px-3 py-1.5 ${
-                    org.id === activeOrgId
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card'
-                  }`}
-                >
-                  <Text
-                    className={`text-sm ${
-                      org.id === activeOrgId
-                        ? 'text-primary font-medium'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    {org.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Token list */}
-          {loading ? (
-            <ActivityIndicator />
-          ) : (
-            <View className="gap-1">
-              {data?.apiTokens.map((token) => (
-                <View
-                  key={token.id}
-                  className="flex-row items-center justify-between rounded-md border border-border bg-card px-3 py-2.5"
-                >
-                  <View className="flex-1">
-                    <Text className="text-foreground">{token.name}</Text>
-                    <Text className="text-xs text-muted-foreground font-mono">
-                      {token.tokenPrefix}… · {formatLastUsed(token.lastUsedAt)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleRevoke(token.id)}
-                    className="rounded-md border border-destructive px-3 py-1.5"
-                  >
-                    <Text className="text-destructive text-sm">Revoke</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {data?.apiTokens.length === 0 && (
-                <Text className="text-sm text-muted-foreground">
-                  No tokens for this workspace yet.
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Freshly minted token — shown exactly once */}
-          {plaintext && (
-            <View className="gap-2 rounded-md border border-primary bg-primary/10 p-3">
-              <Text className="text-sm font-medium text-foreground">
-                Copy your token now — you won't be able to see it again.
-              </Text>
-              <Text
-                selectable
-                className="text-foreground font-mono text-xs break-all"
-              >
-                {plaintext}
-              </Text>
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  onPress={handleCopy}
-                  className="rounded-md bg-primary px-3 py-1.5"
-                >
-                  <Text className="text-primary-foreground text-sm font-medium">
-                    {copied ? 'Copied' : 'Copy'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setPlaintext(null)}
-                  className="rounded-md border border-border px-3 py-1.5"
-                >
-                  <Text className="text-foreground text-sm">Dismiss</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {error ? (
-            <Text className="text-destructive text-sm">{error}</Text>
-          ) : null}
-
-          {/* Create form */}
-          <View className="flex-row gap-2">
-            <TextInput
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-foreground"
-              placeholder="Token name (e.g. CI)"
-              value={newName}
-              onChangeText={setNewName}
-              returnKeyType="done"
-              onSubmitEditing={handleCreate}
+                />
+              }
             />
-            <TouchableOpacity
-              onPress={handleCreate}
-              disabled={creating || !newName.trim()}
-              className="items-center justify-center rounded-md bg-primary px-4 disabled:opacity-50"
-            >
-              {creating ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-primary-foreground font-medium">
-                  Create
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          ) : null}
+          {activeOrgId ? (
+            <>
+              <LoadState
+                compact
+                query={tokensQuery}
+                what="the tokens"
+                count={tokens.length}
+                emptySlot={
+                  <EmptyState
+                    compact
+                    title="No tokens for this workspace yet."
+                  />
+                }
+              />
+              <List
+                label="API tokens"
+                contentSlot={tokens.map((token) => (
+                  <ListItem
+                    key={token.id}
+                    title={token.name}
+                    description={`${token.tokenPrefix}… · ${formatLastUsed(token.lastUsedAt)}`}
+                    actionSlot={
+                      <ConfirmButton
+                        variant="destructive-outline"
+                        size="xs"
+                        content="Revoke"
+                        title={`Revoke "${token.name}"?`}
+                        description="Anything still using this token loses access at once. This cannot be undone."
+                        confirmLabel="Revoke"
+                        onConfirm={() => void handleRevoke(token.id)}
+                      />
+                    }
+                  />
+                ))}
+              />
+              {/* Freshly minted token — shown exactly once */}
+              {plaintext ? (
+                <Alert
+                  variant="info"
+                  title="Copy your token now"
+                  description="You won't be able to see it again."
+                  actionSlot={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      content="Dismiss"
+                      onPress={() => setPlaintext(null)}
+                    />
+                  }
+                />
+              ) : null}
+              {plaintext ? (
+                <CodeBlock
+                  content={plaintext}
+                  wrap
+                  actionSlot={
+                    <CopyButton value={plaintext} label="Copy token" />
+                  }
+                />
+              ) : null}
+              <View className="flex-row gap-2">
+                <Input
+                  aria-label="Token name"
+                  className="flex-1"
+                  placeholder="Token name (e.g. CI)"
+                  value={newName}
+                  onChangeText={setNewName}
+                  onSubmitEditing={handleCreate}
+                />
+                <Button
+                  content="Create"
+                  loading={creating}
+                  disabled={!newName.trim()}
+                  onPress={handleCreate}
+                />
+              </View>
+            </>
+          ) : null}
+          {error ? <FieldError>{error}</FieldError> : null}
         </>
-      )}
-    </View>
+      }
+    />
   );
 }
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
-
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="p-4 gap-6 max-w-lg"
-    >
-      <Text className="text-xl font-semibold text-foreground">Settings</Text>
-
-      {/* Account */}
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Account</Text>
-        <View className="rounded-md border border-border bg-card px-3 py-2.5">
-          <Text className="text-muted-foreground text-sm">{user?.email}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={signOut}
-          className="items-center rounded-md border border-destructive py-2"
-        >
-          <Text className="text-destructive text-sm font-medium">Sign out</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Theme */}
-      <ThemeRow />
-
-      {/* Orgs */}
-      <OrgsSection />
-
-      {/* API tokens */}
-      <ApiTokensSection />
-    </ScrollView>
+    <PageLayout
+      width="prose"
+      title="Settings"
+      contentClassName="gap-6 py-6"
+      contentSlot={
+        <>
+          <AccountCard />
+          <AppearanceCard />
+          <WorkspacesCard />
+          <ApiTokensCard />
+        </>
+      }
+    />
   );
 }

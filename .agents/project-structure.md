@@ -23,34 +23,44 @@ app/
 ├── app.json                        # Expo config (slug: cubicecho-notes)
 ├── babel.config.js                 # Expo preset + module-resolver (@/ → src/)
 ├── metro.config.js                 # Monorepo watchFolders + NativeWind
-├── tailwind.config.ts              # shadcn CSS vars + NativeWind preset
-├── global.css                      # @tailwind directives (NativeWind entry)
+├── postcss.config.mjs              # Tailwind 4
+├── components.json                 # cubeui native registry
+├── cubeui-tokens.css               # @cubeui/tokens (generated)
+├── global.css                      # imports the tokens; app-only CSS
+├── patches/                        # react-native-css patch (postinstall)
+├── public/index.html               # theme pre-paint script
 ├── nativewind-env.d.ts             # /// <reference types="nativewind/types" />
 ├── tsconfig.json                   # extends expo/tsconfig.base, paths: @/* → src/*
 ├── app/
 │   ├── _layout.tsx                 # Root: ApolloProvider + NotesProvider + Stack
 │   ├── index.tsx                   # Redirect to /(app)
 │   └── (app)/
-│       ├── _layout.tsx             # Sidebar layout (web) | Slot (native)
-│       ├── index.tsx               # Empty state "select or create a note"
+│       ├── _layout.tsx             # SidebarLayout: rail from md up, AppBar on a phone
+│       ├── index.tsx               # Notes list (PageLayout + List)
+│       ├── settings.tsx            # Account, theme, workspaces, API tokens
 │       └── notes/
 │           └── [noteId].tsx        # MarkdownEditor for selected note
 └── src/
-    ├── index.css                   # CSS custom properties (shadcn theme vars)
     ├── apollo-client.ts            # ApolloClient pointing at localhost:4000
     ├── lib/
     │   ├── auth.ts                 # DEMO_USER_ID + getToken/setToken/clearToken
     │   ├── storage.ts              # localStorage wrapper (web only, safe on native)
-    │   └── utils.ts                # cn() — clsx + tailwind-merge
+    │   ├── notes.ts                # notePath, noteLabel, noteEditedAgo
+│   └── utils.ts                # cubeui's cn() and helpers (registry)
     ├── context/
     │   └── NotesContext.tsx        # Notes CRUD via GraphQL (Apollo useQuery/useMutation)
     └── components/
-        ├── ui/
-        │   └── button.tsx          # shadcn Button (cva variants)
+        ├── *.tsx                   # cubeui shells (registry copies)
+        ├── ui/                     # cubeui primitives (registry copies)
         └── domain/
-            ├── sidebar/
-            │   ├── NotesList.tsx   # Sidebar list + "+" create button
-            │   └── NoteItem.tsx    # Title + relative timestamp
+            ├── navigation/
+            │   └── AppSidebar.tsx  # The rail: workspace, notes, settings
+            ├── notes/
+            │   └── useCreateNote.ts
+            ├── query/
+            │   └── load-state.tsx  # LoadState over an Apollo result
+            ├── workspace/
+            │   └── WorkspacePicker.tsx
             └── editor/
                 └── MarkdownEditor.tsx  # @uiw/react-md-editor (web only)
 ```
@@ -60,14 +70,15 @@ app/
 | Route | File | Description |
 |-------|------|-------------|
 | `/` | `app/index.tsx` | Redirects to `/(app)` |
-| `/(app)` | `app/(app)/index.tsx` | Empty state / no note selected |
+| `/(app)` | `app/(app)/index.tsx` | Notes list |
+| `/(app)/settings` | `app/(app)/settings.tsx` | Settings |
 | `/(app)/notes/[noteId]` | `app/(app)/notes/[noteId].tsx` | Note editor |
 
 ### Data Flow (MVP)
 
 ```
 NotesProvider (GraphQL via Apollo)
-  └── NotesList ──────────── reads notes[], navigates on select
+  └── AppSidebar / index ──── reads notes[], links to each
   └── [noteId].tsx ────────── finds note by ID
       └── MarkdownEditor ─── calls updateNote() on every keystroke
 ```
