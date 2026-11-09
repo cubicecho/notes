@@ -23,17 +23,14 @@ router.push('/(app)/notes/some-id');
 const { noteId } = useLocalSearchParams<{ noteId: string }>();
 ```
 
-## Platform-Specific Layout
+## App Shell
 
-The `(app)/_layout.tsx` renders different layouts per platform:
-
-```tsx
-if (Platform.OS === 'web') return <WebLayout />;
-return <NativeLayout />;
-```
-
-`WebLayout` uses raw `<div>` / `<aside>` / `<main>` with Tailwind classes.
-`NativeLayout` uses `<Slot />` only (sidebar nav TBD for native).
+`(app)/_layout.tsx` is cubeui's `SidebarLayout` with `sidebarHideBelow="md"`:
+from `md` up the rail (`components/domain/navigation/AppSidebar.tsx` — brand,
+workspace picker, the notes, Settings and Sign out) sits beside the screen; on
+a phone an `AppBar` with Notes / Settings links and a New note button stands in
+for it, and the Notes screen (`(app)/index.tsx`) is the list. Each screen is a
+`PageLayout` (or the editor, which fills the pane).
 
 ## NotesContext
 
@@ -95,15 +92,21 @@ interface Note {
 
 ## NativeWind / Tailwind
 
-Use Tailwind utility classes on all React Native components via NativeWind.
-CSS custom properties (shadcn theme vars) are defined in `src/index.css`.
+NativeWind 5 (`5.0.0-rc.0`, pinned exactly) over `react-native-css`
+`3.1.0-rc.0`, with Tailwind 4 through `postcss.config.mjs`. There is no
+`tailwind.config`: the theme is `cubeui-tokens.css` (from `@cubeui/tokens`,
+generated — never edit it), imported by `global.css`. `app/patches/` holds
+cubeui's `react-native-css` patch, applied by the app's `postinstall`; without
+it opacity classes draw black on device.
 
 ```tsx
-<View className="flex-1 bg-background text-foreground" />
-<Text className="text-sm text-muted-foreground" />
+<View className="flex-1 bg-background" />
+<Text className="text-sm text-foreground/60" />
 ```
 
-Dark mode: add `dark` class to `<html>` (web). NativeWind handles native.
+Theme: cubeui's `ThemePicker` / `useThemePreference` (stored under
+`cubeui-theme`; the old `cubicecho_theme` key is migrated). `public/index.html`
+paints the stored theme before the bundle loads.
 
 ## Apollo Client
 
@@ -116,21 +119,17 @@ from storage asynchronously, so queries that depend on it skip until auth
 resolves. `AuthContext` also exposes `personalOrgId` (from `me { personalOrg { id } }`),
 which `NotesContext` uses as the target org for personal notes.
 
-## shadcn UI Components
+## cubeui components
 
-Primitives live in `src/components/ui/`. Currently:
+The app installs from cubeui's native registry (`app/components.json`):
+`npx shadcn@latest add @cubeui/<item>` from `app/`. Shells land in
+`src/components/*.tsx`, primitives in `src/components/ui/`, helpers in
+`src/lib/`. They are registry copies: do not edit them (biome skips them) —
+reinstall to update. App code lives in `src/components/domain/`. No cubeui
+component takes children; the body is `contentSlot`.
 
-- `button.tsx` — `<Button variant="ghost" size="icon">…</Button>`
-
-Add new components by copying the shadcn recipe into `src/components/ui/` and
-adapting `Pressable`/`Text` for React Native Web.
+- `domain/query/load-state.tsx` — cubeui's `LoadState` over an Apollo result.
 
 ## CSS Imports in Expo Router
 
-Import CSS files in the layout that needs them, not in every component:
-
-```tsx
-// app/_layout.tsx
-import '../src/index.css';
-import '../global.css';
-```
+`global.css` is imported once, in `app/_layout.tsx`.

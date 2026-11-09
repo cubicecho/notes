@@ -86,6 +86,8 @@ export interface Note {
 interface NotesContextValue {
   notes: Note[];
   loading: boolean;
+  /** Why the notes query failed, while it has nothing to show. */
+  error: unknown;
   createNote: (userId: string) => Promise<Note>;
   updateNote: (
     id: string,
@@ -135,6 +137,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   // loading:false, so this gap must be filled explicitly.
   const loading =
     authLoading || (isOrg ? orgQuery.loading : personalQuery.loading);
+  const error = isOrg ? orgQuery.error : personalQuery.error;
 
   const notes: Note[] = (rawNotes ?? []).map((n) => ({
     id: n.id,
@@ -208,7 +211,15 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <NotesContext.Provider
-      value={{ notes, loading, createNote, updateNote, deleteNote, refetch }}
+      value={{
+        notes,
+        loading,
+        error,
+        createNote,
+        updateNote,
+        deleteNote,
+        refetch,
+      }}
     >
       {children}
     </NotesContext.Provider>
